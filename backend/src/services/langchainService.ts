@@ -1,7 +1,6 @@
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOpenAI } from '@langchain/openai';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { StructuredOutputParser } from '@langchain/core/output_parsers';
@@ -25,7 +24,7 @@ const getEmbeddingModel = (): GoogleGenerativeAIEmbeddings => {
  * Returns either Cerebras (if CEREBRAS_API_KEY is present or LLM_PROVIDER=cerebras)
  * or Gemini 2.5 Flash as the LLM provider.
  */
-const getLLMModel = (temperature = 0.2): BaseChatModel => {
+const getLLMModel = (temperature = 0.2): any => {
   const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
   const hasCerebrasKey = !!process.env.CEREBRAS_API_KEY;
 
@@ -120,10 +119,10 @@ INSTRUCTIONS:
     ['human', '{question}'],
   ]);
 
-  const chain = prompt.pipe(llm).pipe(new StringOutputParser());
+  const chain: any = prompt.pipe(llm).pipe(new StringOutputParser());
   const answer = await chain.invoke({ question });
 
-  return { answer: answer.trim(), citations };
+  return { answer: String(answer).trim(), citations };
 };
 
 // ─── Lab Report Analysis Chain ────────────────────────────────────────────────
@@ -179,10 +178,10 @@ Use Indian clinical reference ranges where applicable. Be thorough and accurate.
     ['human', 'Please analyze this lab report and provide structured findings.'],
   ]);
 
-  const chain = prompt.pipe(llm).pipe(parser);
+  const chain: any = prompt.pipe(llm).pipe(parser);
   const result = (await chain.invoke({
     format_instructions: parser.getFormatInstructions(),
-  })) as unknown as ReportAnalysisOutput;
+  })) as ReportAnalysisOutput;
 
   return result;
 };
@@ -297,10 +296,10 @@ CRITICAL RULES:
     ['human', 'Provide the clinical decision support for this patient presentation.'],
   ]);
 
-  const chain = prompt.pipe(llm).pipe(parser);
+  const chain: any = prompt.pipe(llm).pipe(parser);
   const result = (await chain.invoke({
     format_instructions: parser.getFormatInstructions(),
-  })) as unknown as ClinicalOutputType;
+  })) as ClinicalOutputType;
 
   return result;
 };
@@ -338,6 +337,6 @@ Preserve the structure as much as possible. Output ONLY the extracted text, noth
     ],
   };
 
-  const response = await llm.invoke([message]);
+  const response: any = await llm.invoke([message]);
   return typeof response.content === 'string' ? response.content : String(response.content);
 };
