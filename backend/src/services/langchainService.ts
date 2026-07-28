@@ -150,7 +150,7 @@ export const runReportAnalysisChain = async (
   documentName: string
 ): Promise<ReportAnalysisOutput> => {
   const llm = getLLMModel(0.1);
-  const parser = StructuredOutputParser.fromZodSchema(ReportAnalysisOutputSchema);
+  const parser: any = StructuredOutputParser.fromZodSchema(ReportAnalysisOutputSchema);
 
   const contextText = contextChunks.map((c) => c.content).join('\n\n---\n\n');
 
@@ -239,7 +239,7 @@ export const runClinicalCopilotChain = async (input: {
   duration?: string;
 }): Promise<ClinicalOutputType> => {
   const llm = getLLMModel(0.15);
-  const parser = StructuredOutputParser.fromZodSchema(ClinicalOutputSchema);
+  const parser: any = StructuredOutputParser.fromZodSchema(ClinicalOutputSchema);
 
   const vitalsText = input.vitals
     ? Object.entries(input.vitals)
