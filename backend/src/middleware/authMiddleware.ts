@@ -18,3 +18,5 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     res.status(403).json({ message: 'Invalid or expired access token', error: error.message });
   }
 };
+
+export const authenticate = authenticateToken;

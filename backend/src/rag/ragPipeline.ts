@@ -1,68 +1,77 @@
-import fs from 'fs';
 import path from 'path';
 import { extractTextFromFile } from './textExtractor';
 import { splitTextIntoChunks } from './textSplitter';
-import { getEmbeddings } from '../services/embeddingService';
-import { upsertDocumentChunks } from '../services/pineconeService';
-import { uploadToCloudinary } from '../services/cloudinaryService';
+import { getBatchEmbeddings } from '../services/langchainService';
+import { upsertDocumentChunks } from '../services/pgvectorService';
+import { saveUploadedFile, cleanupTempFile } from '../services/storageService';
 import { Document } from '../models/Document';
 import { Types } from 'mongoose';
+import { DocumentType } from '../types';
 
 interface ProcessDocumentInput {
   filePath: string;
   originalName: string;
   fileSize: number;
+  mimeType: string;
   userId: string;
+  documentType?: DocumentType;
 }
 
 export const processDocumentPipeline = async (
   input: ProcessDocumentInput
 ): Promise<any> => {
-  const { filePath, originalName, fileSize, userId } = input;
+  const { filePath, originalName, fileSize, mimeType, userId, documentType = 'general' } = input;
   const ext = path.extname(originalName);
 
   try {
-    // 1. Extract text from the temporary file
-    console.log(`Extracting text from: ${originalName}`);
-    const rawText = await extractTextFromFile(filePath, ext);
+    // 1. Extract text (with OCR fallback for scanned lab reports/documents)
+    console.log(`Extracting text from: ${originalName} (Type: ${documentType})`);
+    const rawText = await extractTextFromFile(filePath, ext, mimeType);
 
     if (!rawText || rawText.trim().length === 0) {
       throw new Error('No text content could be extracted from this document.');
     }
 
     // 2. Chunk text intelligently with overlap
-    console.log(`Splitting text into chunks`);
-    const chunks = await splitTextIntoChunks(rawText, 1000, 200);
+    // For lab reports, chunk size is smaller (500) to keep lab parameters precise
+    const chunkSize = documentType === 'lab_report' ? 500 : 1000;
+    const chunkOverlap = documentType === 'lab_report' ? 100 : 200;
+
+    console.log(`Splitting text into chunks (size: ${chunkSize}, overlap: ${chunkOverlap})`);
+    const chunks = await splitTextIntoChunks(rawText, chunkSize, chunkOverlap);
     const chunkCount = chunks.length;
     console.log(`Split text into ${chunkCount} chunks`);
 
-    // 3. Generate embeddings
+    // 3. Generate embeddings via LangChain Gemini Embeddings
     console.log(`Generating embeddings for ${chunkCount} chunks`);
     const textsOnly = chunks.map((c) => c.text);
-    const embeddings = await getEmbeddings(textsOnly);
+    const embeddings = await getBatchEmbeddings(textsOnly);
 
-    // 4. Upload file to Cloudinary to secure permanent file storage
-    console.log(`Uploading file to Cloudinary`);
-    const cloudinaryData = await uploadToCloudinary(filePath);
+    // 4. Save file permanently to local disk
+    console.log(`Saving file to permanent local storage`);
+    const permanentPath = saveUploadedFile(filePath, originalName, userId);
 
-    // 5. Create Document Metadata inside MongoDB
+    // 5. Create Document Metadata in MongoDB
     console.log(`Saving document metadata to MongoDB`);
     const documentRecord = new Document({
       filename: originalName,
-      cloudinaryUrl: cloudinaryData.url,
-      cloudinaryPublicId: cloudinaryData.publicId,
+      localPath: permanentPath,
+      mimeType,
       owner: new Types.ObjectId(userId),
       fileSize,
       chunkCount,
+      documentType,
+      processingStatus: 'ready',
     });
     await documentRecord.save();
 
-    // 6. Store embeddings inside Pinecone
-    console.log(`Upserting embeddings to Pinecone`);
+    // 6. Store embeddings in PostgreSQL pgvector
+    console.log(`Upserting embeddings to pgvector`);
     await upsertDocumentChunks(
       documentRecord._id.toString(),
       userId,
       originalName,
+      documentType,
       chunks,
       embeddings
     );
@@ -70,16 +79,8 @@ export const processDocumentPipeline = async (
     return documentRecord;
   } catch (error: any) {
     console.error('RAG Pipeline processing failed:', error);
+    // Cleanup temporary upload on error
+    cleanupTempFile(filePath);
     throw error;
-  } finally {
-    // 8. Delete temporary file
-    if (fs.existsSync(filePath)) {
-      console.log(`Cleaning up temporary file: ${filePath}`);
-      try {
-        fs.unlinkSync(filePath);
-      } catch (err) {
-        console.error('Failed to delete temporary file:', err);
-      }
-    }
   }
 };

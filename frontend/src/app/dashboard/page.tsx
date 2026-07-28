@@ -1,0 +1,161 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../lib/api';
+import { DashboardLayout, Chat as ChatItem } from '../../components/DashboardLayout';
+import { ClinicalCopilot } from '../../components/ClinicalCopilot';
+import { LabReportAnalyzer } from '../../components/LabReportAnalyzer';
+import { DocumentsList } from '../../components/DocumentsList';
+import { ChatInterface } from '../../components/ChatInterface';
+
+interface DocumentItem {
+  _id: string;
+  filename: string;
+  fileSize: number;
+  chunkCount: number;
+  documentType: 'general' | 'lab_report';
+  uploadDate: string;
+}
+
+export default function DashboardPage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'copilot' | 'reports' | 'documents' | 'chat'>('copilot');
+  
+  const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
+  const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
+
+  // Redirect to login if unauthenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  // Load documents and chat sessions on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchDocuments();
+      fetchChats();
+    }
+  }, [isAuthenticated]);
+
+  const fetchDocuments = async () => {
+    try {
+      const res = await api.get('/documents');
+      setDocuments(res.data.documents || []);
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+    }
+  };
+
+  const fetchChats = async () => {
+    try {
+      const res = await api.get('/chats');
+      setChats(res.data.chats || []);
+    } catch (err) {
+      console.error('Failed to fetch chats:', err);
+    }
+  };
+
+  const handleRefreshChat = async (chatId: string) => {
+    try {
+      const res = await api.get(`/chats/${chatId}`);
+      const updatedChat = res.data.chat;
+      setActiveChat(updatedChat);
+      setChats(chats.map((c) => (c._id === chatId ? updatedChat : c)));
+    } catch (err) {
+      console.error('Failed to refresh chat:', err);
+    }
+  };
+
+  const handleSelectDocument = (doc: DocumentItem) => {
+    setActiveDoc(doc);
+  };
+
+  const handleSelectChat = (chat: ChatItem) => {
+    setActiveChat(chat);
+    setActiveTab('chat');
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    try {
+      await api.delete(`/documents/${docId}`);
+      setDocuments(documents.filter((d) => d._id !== docId));
+      setChats(chats.filter((c) => c.document?._id !== docId));
+      if (activeDoc?._id === docId) setActiveDoc(null);
+    } catch (err) {
+      console.error('Failed to delete document:', err);
+    }
+  };
+
+  const handleRenameDocument = async (docId: string, newName: string) => {
+    try {
+      await api.put(`/documents/${docId}/rename`, { filename: newName });
+      setDocuments(documents.map((d) => (d._id === docId ? { ...d, filename: newName } : d)));
+    } catch (err) {
+      console.error('Failed to rename document:', err);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await api.delete(`/chats/${chatId}`);
+      setChats(chats.filter((c) => c._id !== chatId));
+      if (activeChat?._id === chatId) setActiveChat(null);
+    } catch (err) {
+      console.error('Failed to delete chat:', err);
+    }
+  };
+
+  const handleRenameChat = async (chatId: string, newTitle: string) => {
+    try {
+      await api.put(`/chats/${chatId}/rename`, { title: newTitle });
+      setChats(chats.map((c) => (c._id === chatId ? { ...c, title: newTitle } : c)));
+      if (activeChat?._id === chatId) {
+        setActiveChat({ ...activeChat, title: newTitle });
+      }
+    } catch (err) {
+      console.error('Failed to rename chat:', err);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center space-y-3">
+        <div className="h-10 w-10 border-3 border-teal-500 border-t-transparent animate-spin rounded-full" />
+        <p className="text-xs text-slate-400 font-semibold tracking-wide">Loading MedSynexa Clinical Engine...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <DashboardLayout
+      documents={documents}
+      chats={chats}
+      onUploadSuccess={fetchDocuments}
+      onDeleteDocument={handleDeleteDocument}
+      onRenameDocument={handleRenameDocument}
+      onSelectDocument={handleSelectDocument}
+      onSelectChat={handleSelectChat}
+      onDeleteChat={handleDeleteChat}
+      onRenameChat={handleRenameChat}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      activeChat={activeChat}
+    >
+      {/* Dynamic Tab Render */}
+      {activeTab === 'copilot' && <ClinicalCopilot />}
+      {activeTab === 'reports' && <LabReportAnalyzer />}
+      {activeTab === 'documents' && <DocumentsList />}
+      {activeTab === 'chat' && <ChatInterface chat={activeChat} onRefreshChat={handleRefreshChat} />}
+    </DashboardLayout>
+  );
+}

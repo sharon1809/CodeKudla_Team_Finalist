@@ -7,18 +7,17 @@ import {
   renameChat,
   deleteChat,
 } from '../controllers/chatController';
-import { authenticateToken } from '../middleware/authMiddleware';
+import { authenticate } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Apply auth middleware to all chat routes
-router.use(authenticateToken);
+router.use(authenticate);
 
 router.post('/', createChat);
 router.get('/', getChats);
 router.get('/:id', getChatById);
 router.post('/:id/question', askQuestion);
-router.put('/:id', renameChat);
+router.put('/:id/rename', renameChat);
 router.delete('/:id', deleteChat);
 
 export default router;

@@ -2,8 +2,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// Ensure the local uploads directory exists
-const uploadDir = path.join(process.cwd(), 'uploads');
+// Ensure local uploads directory exists
+const uploadDir = path.join(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -14,35 +14,35 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generate a unique filename to prevent collisions
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
+    cb(null, `${uniqueSuffix}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
   },
 });
 
-// File filter for PDF and DOCX only
+// File filter: PDF, DOCX, and image formats (JPG, PNG, TIFF) for lab report scans
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const filetypes = /pdf|docx/;
+  const allowedExts = /pdf|docx|jpg|jpeg|png|tiff|tif/;
   const mimetype = file.mimetype;
-  const extname = path.extname(file.originalname).toLowerCase();
+  const extname = path.extname(file.originalname).toLowerCase().replace(/^\./, '');
 
-  const isPdf = mimetype === 'application/pdf' || extname === '.pdf';
-  const isDocx = 
-    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
-    extname === '.docx';
+  const isValidMime =
+    mimetype === 'application/pdf' ||
+    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mimetype.startsWith('image/');
 
-  if (isPdf || isDocx) {
+  const isValidExt = allowedExts.test(extname);
+
+  if (isValidMime && isValidExt) {
     return cb(null, true);
   }
 
-  cb(new Error('Only PDF and Word (.docx) documents are supported.'));
+  cb(new Error('Supported file formats: PDF, Word (.docx), and Images (.jpg, .png, .tiff).'));
 };
 
-// Expose Multer instance
 export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB size limit
+    fileSize: (parseInt(process.env.MAX_FILE_SIZE_MB || '20', 10)) * 1024 * 1024, // 20MB limit
   },
 });

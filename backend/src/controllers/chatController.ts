@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { Chat } from '../models/Chat';
 import { Document } from '../models/Document';
-import { getEmbedding } from '../services/embeddingService';
-import { queryDocumentChunks } from '../services/pineconeService';
-import { generateAnswerWithLLM } from '../services/llmService';
+import { getQueryEmbedding, runDocumentChatChain } from '../services/langchainService';
+import { queryDocumentChunks } from '../services/pgvectorService';
 import { IMessage } from '../types';
 
 /**
@@ -48,9 +47,8 @@ export const createChat = async (req: Request, res: Response): Promise<void> => 
 export const getChats = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
-    // Populate document metadata for details (like filename)
     const chats = await Chat.find({ owner: userId })
-      .populate('document', 'filename cloudinaryUrl uploadDate')
+      .populate('document', 'filename documentType uploadDate')
       .sort({ updatedAt: -1 });
 
     res.status(200).json({ chats });
@@ -80,7 +78,7 @@ export const getChatById = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Submit a question to the chat, triggering vector search and LLM completion
+ * Submit a question to the chat, triggering vector search and LangChain RAG
  */
 export const askQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -112,17 +110,19 @@ export const askQuestion = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // 2. Generate embedding for the question
-    console.log(`Generating embedding for question: "${question.substring(0, 30)}..."`);
-    const questionEmbedding = await getEmbedding(question);
+    // 2. Generate embedding for question via LangChain Gemini Embeddings
+    console.log(`Generating embedding for query: "${question.substring(0, 40)}..."`);
+    const questionEmbedding = await getQueryEmbedding(question);
 
-    // 3. Query Pinecone for relevant context chunks
-    console.log(`Querying Pinecone for document: ${documentId}`);
-    const matches = await queryDocumentChunks(documentId, userId, questionEmbedding, 5);
+    // 3. Query pgvector for relevant context chunks
+    // For lab reports retrieve top 10 chunks, for general documents retrieve top 6
+    const topK = document.documentType === 'lab_report' ? 10 : 6;
+    console.log(`Querying pgvector for document: ${documentId} (topK=${topK})`);
+    const matches = await queryDocumentChunks(userId, questionEmbedding, topK, { documentId });
 
-    // 4. Send history + question + context to LLM
-    console.log(`Generating response using LLM`);
-    const { answer, citations } = await generateAnswerWithLLM(
+    // 4. Run LangChain LCEL RAG Chain
+    console.log(`Executing LangChain RAG Chain...`);
+    const { answer, citations } = await runDocumentChatChain(
       question,
       chat.messages,
       matches

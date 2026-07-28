@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090d16;
+  --background: #060b13;
   --foreground: #f1f5f9;
-  --border: #1e293b;
-  --card: #0f172a;
+  --border: #132338;
+  --card: #0b1424;
 }
 
 @theme inline {
@@ -18,29 +18,42 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui;
+  overflow-x: hidden;
 }
 
-/* Glassmorphism utility */
+/* Medical Glassmorphism Panels */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(11, 20, 36, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(13, 148, 136, 0.12);
 }
 
 .glass-panel-glow {
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(11, 20, 36, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(13, 148, 136, 0.08);
 }
 
-/* Animated gradient background */
+.glass-panel-amber {
+  background: rgba(24, 19, 11, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.glass-panel-red {
+  background: rgba(28, 13, 15, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Animated Ambient Background */
 .gradient-bg {
-  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.08) 0%, rgba(0, 0, 0, 0) 60%),
-              radial-gradient(circle at 10% 20%, rgba(236, 72, 153, 0.05) 0%, rgba(0, 0, 0, 0) 40%),
-              radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.05) 0%, rgba(0, 0, 0, 0) 45%);
+  background: radial-gradient(circle at 30% 20%, rgba(13, 148, 136, 0.09) 0%, rgba(0, 0, 0, 0) 50%),
+              radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.07) 0%, rgba(0, 0, 0, 0) 50%),
+              radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.05) 0%, rgba(0, 0, 0, 0) 60%);
 }
 
 /* Custom Scrollbars */
@@ -54,15 +67,15 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(13, 148, 136, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(13, 148, 136, 0.4);
 }
 
-/* Typing cursor animation */
+/* Typing & Pulse Animations */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -71,23 +84,33 @@ body {
 .typing-cursor::after {
   content: '|';
   animation: blink 1s step-end infinite;
-  color: #6366f1;
+  color: #14b8a6;
   font-weight: bold;
   margin-left: 2px;
 }
 
-/* Pulse animation for loading vectors */
 @keyframes pulseGlow {
   0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.98);
+    opacity: 0.4;
+    transform: scale(0.99);
   }
   50% {
-    opacity: 0.7;
-    transform: scale(1.02);
+    opacity: 0.8;
+    transform: scale(1.01);
   }
 }
 
 .pulse-glow {
   animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes heartPulse {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.08); }
+}
+
+.heart-pulse {
+  animation: heartPulse 1.8s infinite ease-in-out;
 }

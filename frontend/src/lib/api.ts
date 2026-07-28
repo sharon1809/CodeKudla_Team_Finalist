@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,7 +9,6 @@ export const api = axios.create({
   },
 });
 
-// Flag to prevent infinite retry loops
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -44,7 +43,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip if it was a login, register, or refresh request itself
+    // Skip if login/register/refresh
     if (
       originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/register') ||
@@ -71,7 +70,6 @@ api.interceptors.response.use(
       const storedRefreshToken = localStorage.getItem('refreshToken');
       if (!storedRefreshToken) {
         isRefreshing = false;
-        // Redirect to login if in browser
         if (typeof window !== 'undefined') {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
@@ -102,7 +100,6 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
 
-        // Clear local storage and log out
         if (typeof window !== 'undefined') {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');

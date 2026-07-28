@@ -8,13 +8,14 @@ const documentSchema = new Schema<IDocument>(
       required: true,
       trim: true,
     },
-    cloudinaryUrl: {
+    localPath: {
       type: String,
       required: true,
     },
-    cloudinaryPublicId: {
+    mimeType: {
       type: String,
       required: true,
+      default: 'application/pdf',
     },
     owner: {
       type: Schema.Types.ObjectId,
@@ -23,11 +24,21 @@ const documentSchema = new Schema<IDocument>(
     },
     fileSize: {
       type: Number,
-      required: true, // in bytes
+      required: true,
     },
     chunkCount: {
       type: Number,
       default: 0,
+    },
+    documentType: {
+      type: String,
+      enum: ['general', 'lab_report'],
+      default: 'general',
+    },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'ready', 'failed'],
+      default: 'pending',
     },
     uploadDate: {
       type: Date,
@@ -38,5 +49,9 @@ const documentSchema = new Schema<IDocument>(
     timestamps: true,
   }
 );
+
+// Index for fast user+type queries
+documentSchema.index({ owner: 1, documentType: 1 });
+documentSchema.index({ owner: 1, createdAt: -1 });
 
 export const Document = model<IDocument>('Document', documentSchema);
