@@ -27,30 +27,57 @@ export const upsertDocumentChunks = async (
       [documentId, userId]
     );
 
-    // Batch insert all chunks
-    const insertPromises = chunks.map(async (chunk, idx) => {
-      const embeddingStr = `[${embeddings[idx].join(',')}]`;
-      return client.query(
-        `INSERT INTO ${TABLE}
-          (document_id, user_id, filename, document_type, chunk_index, content, embedding, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8)`,
-        [
+    const sanitizedFilename = filename.replace(/\u0000/g, '');
+
+    // Insert in batches of 50 using multi-row queries to optimize execution and avoid socket conflicts
+    const batchSize = 50;
+    for (let i = 0; i < chunks.length; i += batchSize) {
+      const batchChunks = chunks.slice(i, i + batchSize);
+      
+      const valueLines: string[] = [];
+      const params: any[] = [];
+      let paramIdx = 1;
+
+      for (let j = 0; j < batchChunks.length; j++) {
+        const chunk = batchChunks[j];
+        const idx = i + j;
+        const embeddingStr = `[${embeddings[idx].join(',')}]`;
+        const sanitizedContent = chunk.text.replace(/\u0000/g, '');
+
+        valueLines.push(
+          `($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}::vector, $${paramIdx++})`
+        );
+
+        const metadataPayload = {
           documentId,
           userId,
-          filename,
+          filename: sanitizedFilename,
+          documentType,
+          chunkIndex: chunk.index,
+          totalChunks: chunks.length,
+          chunkLength: sanitizedContent.length,
+          uploadedAt: new Date().toISOString()
+        };
+
+        params.push(
+          documentId,
+          userId,
+          sanitizedFilename,
           documentType,
           chunk.index,
-          chunk.text,
+          sanitizedContent,
           embeddingStr,
-          JSON.stringify({ chunkIndex: chunk.index, filename, documentType }),
-        ]
-      );
-    });
+          JSON.stringify(metadataPayload)
+        );
+      }
 
-    // Execute in batches of 50 to avoid overwhelming the connection
-    const batchSize = 50;
-    for (let i = 0; i < insertPromises.length; i += batchSize) {
-      await Promise.all(insertPromises.slice(i, i + batchSize));
+      const query = `
+        INSERT INTO ${TABLE}
+          (document_id, user_id, filename, document_type, chunk_index, content, embedding, metadata)
+        VALUES ${valueLines.join(', ')}
+      `;
+
+      await client.query(query, params);
     }
 
     await client.query('COMMIT');
@@ -75,6 +102,7 @@ export const queryDocumentChunks = async (
     documentId?: string;
     documentType?: DocumentType;
     minScore?: number;
+    queryText?: string;
   } = {}
 ): Promise<VectorMatch[]> => {
   const pool = getPgPool();
@@ -98,7 +126,50 @@ export const queryDocumentChunks = async (
   const whereClause = conditions.join(' AND ');
   const minScore = options.minScore ?? 0.0;
 
-  const query = `
+  // 1. Fetch Keyword/Text Search Results if queryText is provided
+  let textResults: any[] = [];
+  if (options.queryText) {
+    try {
+      const searchTerms = options.queryText
+        .replace(/[^a-zA-Z0-9\s]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(term => term.length > 1)
+        .join(' | ');
+
+      if (searchTerms) {
+        const textQuery = `
+          SELECT
+            id::text,
+            document_id,
+            user_id,
+            filename,
+            document_type,
+            chunk_index,
+            content,
+            metadata,
+            ts_rank_cd(to_tsvector('english', content), to_tsquery('english', $${paramIdx})) as score
+          FROM ${TABLE}
+          WHERE ${whereClause}
+            AND to_tsvector('english', content) @@ to_tsquery('english', $${paramIdx})
+          ORDER BY score DESC
+          LIMIT $${paramIdx + 1}
+        `;
+        
+        const textParams = [...params, searchTerms, topK];
+        const textRes = await pool.query(textQuery, textParams);
+        textResults = textRes.rows.map((row) => ({
+          ...row,
+          score: parseFloat(row.score)
+        }));
+      }
+    } catch (err) {
+      console.warn('⚠️ Hybrid Search full-text query failed, falling back to pure vector:', err);
+    }
+  }
+
+  // 2. Fetch Vector Search Results
+  const vectorQuery = `
     SELECT
       id::text,
       document_id,
@@ -116,11 +187,46 @@ export const queryDocumentChunks = async (
     LIMIT $${paramIdx + 1}
   `;
 
-  params.push(embeddingStr, topK);
+  const vectorParams = [...params, embeddingStr, topK * 2];
+  const vectorRes = await pool.query(vectorQuery, vectorParams);
+  const vectorResults = vectorRes.rows.map((row) => ({
+    ...row,
+    score: parseFloat(row.score)
+  }));
 
-  const result = await pool.query(query, params);
+  // 3. Perform Reciprocal Rank Fusion (RRF) to merge vector and text search results
+  let finalResults = vectorResults;
+  if (textResults.length > 0) {
+    const rrfMap = new Map<string, { row: any; rrfScore: number }>();
 
-  return result.rows.map((row) => ({
+    // Add vector results with a rank weight
+    vectorResults.forEach((row, rank) => {
+      const rrfScore = 1.0 / (60.0 + (rank + 1));
+      rrfMap.set(row.id, { row, rrfScore });
+    });
+
+    // Merge keyword text results
+    textResults.forEach((row, rank) => {
+      const textRrf = 1.0 / (60.0 + (rank + 1));
+      if (rrfMap.has(row.id)) {
+        const item = rrfMap.get(row.id)!;
+        item.rrfScore += textRrf;
+        item.row.score = Math.max(item.row.score, 0.5) + 0.1; // Boost relevance score
+      } else {
+        row.score = Math.min(row.score, 0.4); // Normalize text score
+        rrfMap.set(row.id, { row, rrfScore: textRrf });
+      }
+    });
+
+    finalResults = Array.from(rrfMap.values())
+      .sort((a, b) => b.rrfScore - a.rrfScore)
+      .map((item) => item.row)
+      .slice(0, topK);
+  } else {
+    finalResults = vectorResults.slice(0, topK);
+  }
+
+  return finalResults.map((row) => ({
     id: row.id,
     documentId: row.document_id,
     userId: row.user_id,

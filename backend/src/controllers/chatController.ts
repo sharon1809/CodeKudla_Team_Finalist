@@ -13,23 +13,21 @@ export const createChat = async (req: Request, res: Response): Promise<void> => 
     const userId = req.user?.id;
     const { documentId, title } = req.body;
 
-    if (!documentId) {
-      res.status(400).json({ message: 'Document ID is required to start a chat.' });
-      return;
+    let doc = null;
+    if (documentId) {
+      doc = await Document.findOne({ _id: documentId, owner: userId });
+      if (!doc) {
+        res.status(404).json({ message: 'Document not found or access denied.' });
+        return;
+      }
     }
 
-    const doc = await Document.findOne({ _id: documentId, owner: userId });
-    if (!doc) {
-      res.status(404).json({ message: 'Document not found or access denied.' });
-      return;
-    }
-
-    const chatTitle = title || `Chat on ${doc.filename}`;
+    const chatTitle = title || (doc ? `Chat on ${doc.filename}` : 'Global Medical Library Chat');
 
     const chat = new Chat({
       title: chatTitle,
       owner: userId,
-      document: documentId,
+      document: documentId || undefined,
       messages: [],
     });
 
@@ -103,22 +101,30 @@ export const askQuestion = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const documentId = chat.document.toString();
-    const document = await Document.findById(documentId);
-    if (!document) {
-      res.status(404).json({ message: 'Associated document not found' });
-      return;
+    const documentId = chat.document ? chat.document.toString() : undefined;
+    let topK = 6;
+    if (documentId) {
+      const document = await Document.findById(documentId);
+      if (!document) {
+        res.status(404).json({ message: 'Associated document not found' });
+        return;
+      }
+      topK = document.documentType === 'lab_report' ? 10 : 6;
+    } else {
+      // Global library search retrieves top 8 chunks from any document
+      topK = 8;
     }
 
     // 2. Generate embedding for question via LangChain Gemini Embeddings
     console.log(`Generating embedding for query: "${question.substring(0, 40)}..."`);
     const questionEmbedding = await getQueryEmbedding(question);
 
-    // 3. Query pgvector for relevant context chunks
-    // For lab reports retrieve top 10 chunks, for general documents retrieve top 6
-    const topK = document.documentType === 'lab_report' ? 10 : 6;
-    console.log(`Querying pgvector for document: ${documentId} (topK=${topK})`);
-    const matches = await queryDocumentChunks(userId, questionEmbedding, topK, { documentId });
+    // 3. Query pgvector for relevant context chunks (using hybrid search options!)
+    console.log(`Querying pgvector for documentId: ${documentId || 'Global'} (topK=${topK})`);
+    const matches = await queryDocumentChunks(userId, questionEmbedding, topK, { 
+      documentId,
+      queryText: question 
+    });
 
     // 4. Run LangChain LCEL RAG Chain
     console.log(`Executing LangChain RAG Chain...`);

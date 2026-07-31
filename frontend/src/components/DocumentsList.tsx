@@ -15,6 +15,7 @@ import {
   BookOpen,
   Filter,
   HardDrive,
+  MessageSquare,
 } from 'lucide-react';
 
 interface DocumentItem {
@@ -104,6 +105,17 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({ onStartChatWithDoc
       setEditingId(null);
     } catch (err: any) {
       alert('Failed to rename document.');
+    }
+  };
+
+  const handleStartChat = async (doc: DocumentItem) => {
+    try {
+      await api.post('/chats', { documentId: doc._id });
+      if (onStartChatWithDoc) {
+        onStartChatWithDoc(doc);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to start chat session.');
     }
   };
 
@@ -266,7 +278,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({ onStartChatWithDoc
                   {/* Metadata Stats */}
                   <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 bg-slate-950/60 p-2.5 rounded-xl border border-slate-900">
                     <div>
-                      <span className="text-slate-500 block">Vector Segments</span>
+                      <span className="text-slate-500 block">Vector Chunks</span>
                       <span className="font-mono font-bold text-teal-300">{doc.chunkCount} chunks</span>
                     </div>
                     <div>
@@ -288,6 +300,13 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({ onStartChatWithDoc
                     </a>
 
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStartChat(doc)}
+                        className="p-1.5 text-slate-400 hover:text-teal-400 rounded-lg hover:bg-slate-800 transition-colors"
+                        title="Start Q&A Chat"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={() => {
                           setEditingId(doc._id);

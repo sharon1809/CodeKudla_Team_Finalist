@@ -43,7 +43,7 @@ const chatSchema = new Schema<IChat>(
     document: {
       type: Schema.Types.ObjectId,
       ref: 'Document',
-      required: true,
+      required: false,
     },
     messages: [messageSchema],
   },

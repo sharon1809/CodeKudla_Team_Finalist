@@ -1,5 +1,5 @@
-import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { Embeddings, EmbeddingsParams } from '@langchain/core/embeddings';
+import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
@@ -7,28 +7,110 @@ import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { z } from 'zod';
 import { VectorMatch, IMessage, ICitation } from '../types';
 
-// ─── Singleton Clients ────────────────────────────────────────────────────────
-let embeddingModel: GoogleGenerativeAIEmbeddings | null = null;
+// ─── Custom OpenRouter Embeddings Client ─────────────────────────────────────
+export class OpenRouterEmbeddings extends Embeddings {
+  apiKey: string;
+  modelName: string;
 
-const getEmbeddingModel = (): GoogleGenerativeAIEmbeddings => {
-  if (!embeddingModel) {
-    embeddingModel = new GoogleGenerativeAIEmbeddings({
-      apiKey: process.env.GEMINI_API_KEY,
-      model: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
+  constructor(fields: { apiKey: string; modelName?: string } & EmbeddingsParams) {
+    super(fields ?? {});
+    this.apiKey = fields.apiKey;
+    this.modelName = fields.modelName || 'nvidia/nemotron-3-embed-1b:free';
+  }
+
+  private async _embed(input: string | string[]): Promise<number[][]> {
+    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.modelName,
+        input: input,
+      }),
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter Embeddings API error (${response.status}): ${errText}`);
+    }
+
+    const json = (await response.json()) as any;
+    if (!json.data || json.data.length === 0) {
+      throw new Error(`Unexpected OpenRouter response: ${JSON.stringify(json)}`);
+    }
+
+    const sortedData = [...json.data].sort((a, b) => a.index - b.index);
+    return sortedData.map((d) => d.embedding);
+  }
+
+  async embedDocuments(documents: string[]): Promise<number[][]> {
+    if (documents.length === 0) return [];
+    return this._embed(documents);
+  }
+
+  async embedQuery(document: string): Promise<number[]> {
+    const result = await this._embed(document);
+    return result[0];
+  }
+}
+
+// ─── Singleton Clients ────────────────────────────────────────────────────────
+let embeddingModel: any = null;
+
+const getEmbeddingModel = (): any => {
+  if (!embeddingModel) {
+    const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
+    const hasGeminiKey = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here';
+    const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
+
+    if (provider === 'gemini' && hasGeminiKey) {
+      embeddingModel = new GoogleGenerativeAIEmbeddings({
+        apiKey: process.env.GEMINI_API_KEY,
+        modelName: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
+      });
+      console.log('🧠 Initialized Google Gemini Embeddings (text-embedding-004)');
+    } else if (hasOpenRouterKey) {
+      embeddingModel = new OpenRouterEmbeddings({
+        apiKey: process.env.OPENROUTER_API_KEY as string,
+        modelName: process.env.OPENROUTER_EMBEDDING_MODEL || 'nvidia/nemotron-3-embed-1b:free',
+      });
+      console.log('🧠 Initialized OpenRouter Embeddings');
+    } else if (hasGeminiKey) {
+      embeddingModel = new GoogleGenerativeAIEmbeddings({
+        apiKey: process.env.GEMINI_API_KEY,
+        modelName: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
+      });
+      console.log('🧠 Initialized Google Gemini Embeddings (fallback)');
+    } else {
+      throw new Error('No valid API key configured for embeddings (neither OPENROUTER_API_KEY nor GEMINI_API_KEY was found).');
+    }
   }
   return embeddingModel;
 };
 
 /**
- * Returns either Cerebras (if CEREBRAS_API_KEY is present or LLM_PROVIDER=cerebras)
- * or Gemini 2.5 Flash as the LLM provider.
+ * Returns either Cerebras, OpenRouter (Gemini), or direct Google Gemini as the LLM provider.
  */
 const getLLMModel = (temperature = 0.2): any => {
   const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
-  const hasCerebrasKey = !!process.env.CEREBRAS_API_KEY;
+  const hasCerebrasKey = !!process.env.CEREBRAS_API_KEY && process.env.CEREBRAS_API_KEY !== 'your_cerebras_api_key_here';
+  const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
 
-  if (hasCerebrasKey || provider === 'cerebras') {
+  if (provider === 'openrouter' && hasOpenRouterKey) {
+    return new ChatOpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      configuration: {
+        baseURL: 'https://openrouter.ai/api/v1',
+      },
+      model: process.env.OPENROUTER_CHAT_MODEL || 'google/gemini-2.5-flash',
+      temperature,
+      maxRetries: 0, // Disable automatic retries on rate limit (429) errors
+    });
+  }
+
+  if (provider === 'cerebras' && hasCerebrasKey) {
     return new ChatOpenAI({
       apiKey: process.env.CEREBRAS_API_KEY || '',
       configuration: {
@@ -36,6 +118,20 @@ const getLLMModel = (temperature = 0.2): any => {
       },
       model: process.env.CEREBRAS_MODEL || 'llama3.1-70b',
       temperature,
+      maxRetries: 0,
+    });
+  }
+
+  // Fallback to OpenRouter if API key is present
+  if (hasOpenRouterKey) {
+    return new ChatOpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      configuration: {
+        baseURL: 'https://openrouter.ai/api/v1',
+      },
+      model: process.env.OPENROUTER_CHAT_MODEL || 'google/gemini-2.5-flash',
+      temperature,
+      maxRetries: 0,
     });
   }
 
@@ -43,6 +139,7 @@ const getLLMModel = (temperature = 0.2): any => {
     apiKey: process.env.GEMINI_API_KEY,
     model: process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash',
     temperature,
+    maxRetries: 0,
   });
 };
 
@@ -57,7 +154,7 @@ export const getQueryEmbedding = async (text: string): Promise<number[]> => {
 export const getBatchEmbeddings = async (texts: string[]): Promise<number[][]> => {
   const model = getEmbeddingModel();
   const results: number[][] = [];
-  const batchSize = 10;
+  const batchSize = 100; // Increased to 100 to process document in a single request instead of 10 separate requests
   const delayMs = 200;
 
   for (let i = 0; i < texts.length; i += batchSize) {

@@ -150,11 +150,19 @@ export default function DashboardPage() {
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       activeChat={activeChat}
+      onNewChatCreated={fetchChats}
     >
       {/* Dynamic Tab Render */}
       {activeTab === 'copilot' && <ClinicalCopilot />}
       {activeTab === 'reports' && <LabReportAnalyzer />}
-      {activeTab === 'documents' && <DocumentsList />}
+      {activeTab === 'documents' && (
+        <DocumentsList
+          onStartChatWithDoc={async (doc) => {
+            await fetchChats();
+            setActiveTab('chat');
+          }}
+        />
+      )}
       {activeTab === 'chat' && <ChatInterface chat={activeChat} onRefreshChat={handleRefreshChat} />}
     </DashboardLayout>
   );

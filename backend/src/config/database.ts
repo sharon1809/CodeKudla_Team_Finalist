@@ -11,27 +11,56 @@ export const connectMongoDB = async (): Promise<void> => {
 };
 
 // ─── PostgreSQL Pool (pgvector) ───────────────────────────────────────────────
-const pgPool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/medsynexa',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+let pgPool: Pool | null = null;
 
-export const getPgPool = (): Pool => pgPool;
+export const getPgPool = (): Pool => {
+  if (!pgPool) {
+    pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/medsynexa',
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+  }
+  return pgPool;
+};
 
 /**
  * Initialize the pgvector extension and the embeddings table.
  * Runs once at server startup.
  */
 export const initPgVector = async (): Promise<void> => {
-  const client = await pgPool.connect();
+  const client = await getPgPool().connect();
   try {
     // Enable pgvector extension
     await client.query('CREATE EXTENSION IF NOT EXISTS vector;');
 
+    // Check if the table exists and verify its vector dimension
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'document_embeddings'
+      );
+    `);
+    
+    if (tableExists.rows[0].exists) {
+      const dimResult = await client.query(`
+        SELECT atttypmod 
+        FROM pg_attribute 
+        WHERE attrelid = 'document_embeddings'::regclass 
+          AND attname = 'embedding';
+      `);
+      if (dimResult.rows.length > 0) {
+        const currentDim = dimResult.rows[0].atttypmod;
+        if (currentDim !== 2048) {
+          console.log(`ℹ️ Mismatched vector dimension (${currentDim}) detected. Re-creating table for 2048 dimensions.`);
+          await client.query('DROP TABLE IF EXISTS document_embeddings CASCADE;');
+        }
+      }
+    }
+
     // Create the main embeddings table
-    // text-embedding-004 produces 768-dimensional vectors
+    // nvidia/nemotron-3-embed-1b:free produces 2048-dimensional vectors
     await client.query(`
       CREATE TABLE IF NOT EXISTS document_embeddings (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,7 +70,7 @@ export const initPgVector = async (): Promise<void> => {
         document_type TEXT NOT NULL DEFAULT 'general',
         chunk_index INTEGER NOT NULL,
         content     TEXT NOT NULL,
-        embedding   vector(768) NOT NULL,
+        embedding   vector(2048) NOT NULL,
         metadata    JSONB DEFAULT '{}',
         created_at  TIMESTAMPTZ DEFAULT NOW()
       );

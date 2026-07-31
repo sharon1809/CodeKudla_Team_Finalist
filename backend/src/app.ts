@@ -46,7 +46,7 @@ app.get('/health', (req: Request, res: Response) => {
     status: 'OK',
     service: 'MedSynexa Clinical AI Backend',
     timestamp: new Date(),
-    llm: process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash',
+    llm: process.env.OPENROUTER_CHAT_MODEL || process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash',
     vectorDb: 'PostgreSQL + pgvector',
   });
 });

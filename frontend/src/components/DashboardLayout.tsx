@@ -55,6 +55,7 @@ interface DashboardLayoutProps {
   activeTab: 'copilot' | 'reports' | 'documents' | 'chat';
   setActiveTab: (tab: 'copilot' | 'reports' | 'documents' | 'chat') => void;
   activeChat: Chat | null;
+  onNewChatCreated?: () => void;
   children: React.ReactNode;
 }
 
@@ -71,6 +72,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   setActiveTab,
   activeChat,
+  onNewChatCreated,
   children,
 }) => {
   const { user, logout, updateUser } = useAuth();
@@ -109,6 +111,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       setUploadError(err.response?.data?.message || 'File upload failed.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleStartGlobalChat = async () => {
+    try {
+      const res = await api.post('/chats', { title: 'Global Medical Library Chat' });
+      if (onNewChatCreated) {
+        onNewChatCreated();
+      }
+      onSelectChat(res.data.chat);
+      setActiveTab('chat');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to start global library chat.');
     }
   };
 
@@ -275,7 +290,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <div className="space-y-2 pt-2 border-t border-slate-900">
             <h3 className="px-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 flex items-center justify-between">
               <span>Medical Q&A History</span>
-              <span className="bg-slate-900 px-1.5 py-0.5 rounded text-slate-400 text-[9px]">{chats.length}</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleStartGlobalChat}
+                  className="px-2 py-0.5 hover:bg-slate-900 rounded text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-500/40 transition-all flex items-center gap-0.5 normal-case font-bold text-[9px]"
+                  title="Chat with entire medical library"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Library</span>
+                </button>
+                <span className="bg-slate-900 px-1.5 py-0.5 rounded text-slate-400 text-[9px]">{chats.length}</span>
+              </div>
             </h3>
 
             {chats.length === 0 ? (
@@ -317,9 +342,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                           >
                             <MessageSquare className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-teal-400" />
                             <div className="truncate text-xs font-medium">
-                              <p className="truncate">{ch.title}</p>
+                              <p className="truncate font-bold">{ch.title}</p>
                               <p className="text-[10px] text-slate-500 truncate">
-                                Source: {ch.document?.filename || 'Guideline'}
+                                Source: {ch.document?.filename || 'All Documents (Global Library)'}
                               </p>
                             </div>
                           </button>
