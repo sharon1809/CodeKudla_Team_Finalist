@@ -62,28 +62,15 @@ let embeddingModel: any = null;
 const getEmbeddingModel = (): any => {
   if (!embeddingModel) {
     const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
-    const hasGeminiKey = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here';
     const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
-
-    if (provider === 'gemini' && hasGeminiKey) {
-      embeddingModel = new GoogleGenerativeAIEmbeddings({
-        apiKey: process.env.GEMINI_API_KEY,
-        modelName: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
-      });
-      console.log('🧠 Initialized Google Gemini Embeddings (text-embedding-004)');
-    } else if (hasOpenRouterKey) {
+    
+    if (hasOpenRouterKey) {
       embeddingModel = new OpenRouterEmbeddings({
         apiKey: process.env.OPENROUTER_API_KEY as string,
         modelName: process.env.OPENROUTER_EMBEDDING_MODEL || 'nvidia/nemotron-3-embed-1b:free',
       });
       console.log('🧠 Initialized OpenRouter Embeddings');
-    } else if (hasGeminiKey) {
-      embeddingModel = new GoogleGenerativeAIEmbeddings({
-        apiKey: process.env.GEMINI_API_KEY,
-        modelName: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
-      });
-      console.log('🧠 Initialized Google Gemini Embeddings (fallback)');
-    } else {
+    }else {
       throw new Error('No valid API key configured for embeddings (neither OPENROUTER_API_KEY nor GEMINI_API_KEY was found).');
     }
   }

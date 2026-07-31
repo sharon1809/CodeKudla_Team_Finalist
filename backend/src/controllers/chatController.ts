@@ -119,7 +119,7 @@ export const askQuestion = async (req: Request, res: Response): Promise<void> =>
     console.log(`Generating embedding for query: "${question.substring(0, 40)}..."`);
     const questionEmbedding = await getQueryEmbedding(question);
 
-    // 3. Query pgvector for relevant context chunks (using hybrid search options!)
+    // 3. Query pgvector for relevant context chunks (using hybrid search options!)(COSINE SIMILARITY TO K)
     console.log(`Querying pgvector for documentId: ${documentId || 'Global'} (topK=${topK})`);
     const matches = await queryDocumentChunks(userId, questionEmbedding, topK, { 
       documentId,
