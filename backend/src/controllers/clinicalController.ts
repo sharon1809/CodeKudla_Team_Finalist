@@ -45,19 +45,22 @@ export const analyzeClinicalCase = async (req: Request, res: Response): Promise<
     const responseTimeMs = Date.now() - startTime;
 
     // Attach response time for UI
-    output.responseTimeMs = responseTimeMs;
+    const finalOutput = {
+      ...output,
+      responseTimeMs,
+    };
 
     // Save session to history
     const session = new ClinicalSession({
       userId: doctorId,
       input: req.body,
-      output,
+      output: finalOutput,
     });
     await session.save();
 
     res.status(200).json({
       message: 'Analysis complete',
-      output,
+      output: finalOutput,
       sessionId: session._id,
     });
   } catch (error: any) {

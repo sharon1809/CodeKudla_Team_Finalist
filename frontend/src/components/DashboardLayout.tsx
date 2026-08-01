@@ -23,6 +23,8 @@ import {
   FlaskConical,
   Layers,
   ChevronRight,
+  CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface Document {
