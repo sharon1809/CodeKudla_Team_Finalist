@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes';
 import documentRoutes from './routes/documentRoutes';
 import chatRoutes from './routes/chatRoutes';
 import opdRoutes from './routes/opdRoutes';
+import xrayRoutes from './routes/xrayRoutes';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/opd', opdRoutes);
 app.use('/api/speech', speechRoutes);
 app.use('/api/clinical', clinicalRoutes);
+app.use('/api/xray', xrayRoutes);
 
 // Global 404 Route handler
 app.use((req: Request, res: Response) => {

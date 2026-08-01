@@ -53,8 +53,8 @@ interface DashboardLayoutProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
-  activeTab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat';
-  setActiveTab: (tab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat') => void;
+  activeTab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor';
+  setActiveTab: (tab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor') => void;
   activeChat: Chat | null;
   onNewChatCreated?: () => void;
   children: React.ReactNode;
@@ -96,6 +96,24 @@ const NAV_ITEMS = [
     iconBg: 'icon-emerald',
     activeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     activeDot: 'bg-emerald-500',
+  },
+  {
+    id: 'xray_tech' as const,
+    label: 'X-Ray Tech',
+    sub: 'Upload and AI Analysis',
+    icon: UploadCloud,
+    iconBg: 'icon-blue',
+    activeClass: 'bg-blue-50 text-blue-800 border-blue-200',
+    activeDot: 'bg-blue-500',
+  },
+  {
+    id: 'xray_doctor' as const,
+    label: 'X-Ray Doctor',
+    sub: 'Review & Approve',
+    icon: CheckCircle,
+    iconBg: 'icon-green',
+    activeClass: 'bg-green-50 text-green-800 border-green-200',
+    activeDot: 'bg-green-500',
   },
 ];
 

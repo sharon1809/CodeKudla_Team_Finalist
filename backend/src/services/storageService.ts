@@ -3,11 +3,21 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import zlib from 'zlib';
 import { createClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
+
+// Polyfill WebSocket for Node.js environments (required by @supabase/supabase-js on Node < 22)
+if (typeof global.WebSocket === 'undefined') {
+  (global as any).WebSocket = WebSocket;
+}
 
 // Initialize Supabase Client for Storage
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+  },
+});
 
 const BUCKET_NAME = 'documents';
 

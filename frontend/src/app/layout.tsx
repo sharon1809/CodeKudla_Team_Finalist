@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased min-h-screen bg-[#F8FAFC] text-[#0F172A] selection:bg-teal-200 selection:text-teal-900">
+      <body className="antialiased min-h-screen bg-[#F8FAFC] text-[#0F172A] selection:bg-teal-200 selection:text-teal-900" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
