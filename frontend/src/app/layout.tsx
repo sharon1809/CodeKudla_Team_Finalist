@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased min-h-screen bg-[#F8FAFC] text-[#0F172A] selection:bg-teal-200 selection:text-teal-900">
+      <body className="antialiased min-h-screen bg-[#FAFAFA] text-[#111111] selection:bg-blue-100 selection:text-blue-900">
         <Providers>{children}</Providers>
       </body>
     </html>

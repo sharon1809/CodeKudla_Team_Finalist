@@ -30,37 +30,39 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-6 relative">
-      <div className="fixed top-1/4 right-1/4 w-[500px] h-[500px] bg-teal-600/6 rounded-full blur-[140px] pointer-events-none" />
+      {/* Ambient soft blue flow */}
+      <div className="fixed top-1/4 right-1/4 w-[500px] h-[500px] bg-blue-600/3 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10 fade-in-up">
-        {/* Logo */}
-        <div className="text-center mb-10">
+        {/* Logo Header */}
+        <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-3">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-xl shadow-teal-500/25 border border-teal-400/20 glow-teal">
-              <Stethoscope className="h-7 w-7 text-white" />
+            <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/10 border border-blue-400/20">
+              <Stethoscope className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-extrabold tracking-tight text-white">
-              MedSynexa <span className="gradient-text">AI</span>
+            <span className="text-xl font-bold tracking-tight text-[#111111]">
+              MedSynexa <span className="text-blue-600 font-extrabold">AI</span>
             </span>
           </Link>
-          <h1 className="text-lg font-bold text-white mt-4">Create Doctor Account</h1>
-          <p className="text-sm text-[#8fa3bb] mt-1">Join for instant Indian OPD decision support</p>
+          <h1 className="text-base font-bold text-[#111111] mt-3">Register Doctor Account</h1>
+          <p className="text-xs text-gray-500 mt-1">Join for instant clinical decision support</p>
         </div>
 
-        <div className="glass-elevated p-8 rounded-3xl">
+        {/* Card */}
+        <div className="bg-white p-8 rounded-2xl border border-gray-200/80 shadow-sm">
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-950/40 border border-red-500/20 text-red-300 text-xs flex items-start gap-2.5">
-              <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               <div>
-                <label className="block section-label mb-2">First Name</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">First Name</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#4a637a]">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <User className="h-4 w-4" />
                   </div>
                   <input
@@ -75,12 +77,12 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block section-label mb-2">Last Name</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Last Name</label>
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="input-field px-3 py-2.5"
+                  className="input-field px-3.5 py-2.5"
                   placeholder="Sharma"
                   required
                 />
@@ -88,9 +90,9 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block section-label mb-2">Medical Email</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Medical Email</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#4a637a]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
@@ -105,9 +107,9 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block section-label mb-2">Password</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#4a637a]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -121,7 +123,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#4a637a] hover:text-[#8fa3bb] transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -132,34 +134,35 @@ export default function RegisterPage() {
               type="submit"
               id="register-submit"
               disabled={isSubmitting}
-              className="btn-primary w-full py-3.5 text-sm flex items-center justify-center gap-2 mt-2"
+              className="btn-primary w-full py-3.5 text-xs flex items-center justify-center gap-2 mt-2"
             >
               {isSubmitting ? (
                 <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full spin" />
               ) : (
                 <>
-                  Create Doctor Account
+                  Create Account
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] text-[#4a637a]">
-            <ShieldCheck className="h-3 w-3 text-teal-600" />
-            <span>HIPAA-grade isolation · Data encrypted at rest</span>
+          {/* Security details */}
+          <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[10px] text-gray-400">
+            <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+            <span>HIPAA-compliant data isolation · Encrypted transit</span>
           </div>
 
-          <div className="mt-4 text-center text-xs text-[#8fa3bb]">
+          <div className="mt-4 text-center text-xs text-gray-500">
             Already registered?{' '}
-            <Link href="/login" className="text-teal-400 hover:text-teal-300 font-semibold transition-colors">
+            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
               Sign In
             </Link>
           </div>
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-xs text-[#4a637a] hover:text-[#8fa3bb] transition-colors">
+          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
             ← Back to Home
           </Link>
         </div>

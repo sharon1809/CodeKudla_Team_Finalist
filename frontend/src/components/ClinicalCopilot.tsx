@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import {
   Stethoscope,
   Activity,
@@ -17,7 +16,6 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Plus,
   X,
   ChevronRight,
   HeartPulse,
@@ -28,6 +26,10 @@ import {
   MessageSquareQuote,
   History,
   Clock,
+  Send,
+  Loader2,
+  User,
+  Printer,
 } from 'lucide-react';
 
 interface DifferentialDiagnosis {
@@ -69,9 +71,9 @@ interface ClinicalOutput {
 }
 
 const LIKELIHOOD_CONFIG = {
-  high:     { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    dot: 'bg-red-500'    },
-  moderate: { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
-  low:      { bg: 'bg-slate-50',  border: 'border-slate-200',  text: 'text-slate-600',  dot: 'bg-slate-400'  },
+  high:     { bg: 'bg-red-50/70',    border: 'border-red-100',    text: 'text-red-700',    dot: 'bg-red-500'    },
+  moderate: { bg: 'bg-amber-50/70',  border: 'border-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
+  low:      { bg: 'bg-gray-50/70',   border: 'border-gray-200/60', text: 'text-gray-600',  dot: 'bg-gray-400'  },
 };
 
 const MOCK_OUTPUT: ClinicalOutput = {
@@ -129,7 +131,7 @@ const MOCK_OUTPUT: ClinicalOutput = {
 };
 
 export const ClinicalCopilot: React.FC = () => {
-  // ── Manual Input States ──
+  const { user } = useAuth();
   const [age, setAge] = useState<number | ''>('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [chiefComplaint, setChiefComplaint] = useState(''); 
@@ -150,7 +152,6 @@ export const ClinicalCopilot: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
-  // History States
   const [sessions, setSessions] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -177,7 +178,6 @@ export const ClinicalCopilot: React.FC = () => {
     setShowHistory(false);
   };
 
-  // Initialize Web Speech API
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -205,7 +205,9 @@ export const ClinicalCopilot: React.FC = () => {
         interimRef.current = interim;
 
         const separator = baseTranscriptRef.current && final ? ' ' : '';
-        setAmbientTranscript(baseTranscriptRef.current + separator + final.trim());
+        const currentText = baseTranscriptRef.current + separator + final.trim();
+        setAmbientTranscript(currentText);
+        setChiefComplaint(currentText);
         setInterimTranscript(interim);
       };
 
@@ -221,12 +223,12 @@ export const ClinicalCopilot: React.FC = () => {
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
         setAmbientTranscript(fullText);
+        setChiefComplaint(fullText);
         setInterimTranscript('');
       };
     }
   }, []);
 
-  // Whisper Processing State
   const [isWhisperProcessing, setIsWhisperProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -245,7 +247,7 @@ export const ClinicalCopilot: React.FC = () => {
       };
 
       mediaRecorder.start();
-      recognitionRef.current?.start(); // For visual feedback only
+      recognitionRef.current?.start();
     } catch (err) {
       console.error("Microphone access denied:", err);
       setError("Please allow microphone access to use voice dictation.");
@@ -262,8 +264,6 @@ export const ClinicalCopilot: React.FC = () => {
 
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
-        // Release the microphone
         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
         
         const formData = new FormData();
@@ -296,27 +296,27 @@ export const ClinicalCopilot: React.FC = () => {
         const fullText = baseTranscriptRef.current + separator + whisperText.trim();
         
         setAmbientTranscript(fullText);
+        setChiefComplaint(fullText);
         setInterimTranscript('');
-        
         await handleAnalyze(fullText); 
       } catch (err) {
-        // Fallback to the browser's buggy text if Whisper API fails
         let fullText = baseTranscriptRef.current;
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
         
         setAmbientTranscript(fullText);
+        setChiefComplaint(fullText);
         setInterimTranscript('');
         await handleAnalyze(fullText);
       } finally {
         setIsWhisperProcessing(false);
       }
     } else {
-      baseTranscriptRef.current = '';
+      baseTranscriptRef.current = chiefComplaint;
       finalRef.current = '';
       interimRef.current = '';
       setInterimTranscript('');
-      setAmbientTranscript('');
+      setAmbientTranscript(chiefComplaint);
       setOutput(null);
       setIsListening(true);
       await startRecording();
@@ -350,7 +350,6 @@ export const ClinicalCopilot: React.FC = () => {
   const removeSymptom = (i: number) => setSymptoms(symptoms.filter((_, idx) => idx !== i));
 
   const handleAnalyze = async (transcriptOverride?: string) => {
-    // If using manual form
     const finalComplaint = transcriptOverride || ambientTranscript || chiefComplaint;
     if (!finalComplaint.trim()) { 
       setError('Please provide a Chief Complaint or use Voice Dictation.'); 
@@ -368,7 +367,7 @@ export const ClinicalCopilot: React.FC = () => {
         gender,
       });
       setOutput(res.data.output);
-      fetchSessions(); // refresh history
+      fetchSessions();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Real API failed. Try using Mock Analysis for demo.');
     } finally {
@@ -379,8 +378,6 @@ export const ClinicalCopilot: React.FC = () => {
   const handleMockAnalyze = () => {
     setError(null);
     setIsLoading(true);
-
-    // Simulate network delay
     setTimeout(() => {
       setOutput(MOCK_OUTPUT);
       setIsLoading(false);
@@ -395,8 +392,6 @@ export const ClinicalCopilot: React.FC = () => {
     setAmbientTranscript('');
     setOutput(null);
     setError(null);
-    
-    // Auto-run analysis for demo
     handleMockAnalyze();
   };
 
@@ -411,8 +406,6 @@ export const ClinicalCopilot: React.FC = () => {
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      // html2canvas fails on modern css colors (lab). 
-      // Using native window print is 100% reliable.
       window.print();
     } catch (err) {
       console.error('Print failed', err);
@@ -440,31 +433,32 @@ export const ClinicalCopilot: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex relative overflow-hidden bg-[#F8FAFC]">
-      {/* HISTORY SIDEBAR */}
+    <div className="h-full flex relative overflow-hidden bg-white">
+      
+      {/* ─── PAST SESSIONS SIDEBAR SLIDER ─── */}
       {showHistory && (
-        <div className="w-80 bg-white border-r border-[#E2E8F0] shadow-xl z-30 flex flex-col h-full absolute left-0 top-0">
-          <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between bg-teal-50">
-            <h3 className="font-bold text-teal-800 flex items-center gap-2">
-              <History className="h-4 w-4" /> Past Sessions
+        <div className="w-80 bg-white border-r border-gray-200/80 shadow-lg z-30 flex flex-col h-full absolute left-0 top-0 slide-in-left">
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <h3 className="font-bold text-gray-800 text-xs uppercase tracking-wider flex items-center gap-2">
+              <History className="h-4 w-4 text-blue-600" /> Past Sessions
             </h3>
-            <button onClick={() => setShowHistory(false)} className="text-teal-600 hover:bg-teal-100 p-1.5 rounded-lg transition">
-              <X className="h-4 w-4" />
+            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-[#111111] p-1 rounded-lg transition-colors">
+              <X className="h-4.5 w-4.5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {sessions.length === 0 ? (
-              <p className="text-sm text-center text-[#94A3B8] mt-10">No past sessions found.</p>
+              <p className="text-xs text-center text-gray-400 mt-10">No sessions recorded yet.</p>
             ) : (
               sessions.map((sess) => (
                 <button
                   key={sess._id}
                   onClick={() => loadSession(sess)}
-                  className="w-full text-left p-3 rounded-xl hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]"
+                  className="w-full text-left p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
                 >
-                  <p className="font-semibold text-[#0F172A] text-sm truncate">{sess.input.chiefComplaint}</p>
-                  <div className="flex items-center justify-between mt-1 text-[11px] font-medium text-[#64748B]">
-                    <span>{sess.input.age}yo {sess.input.gender}</span>
+                  <p className="font-bold text-gray-800 text-xs truncate">{sess.input.chiefComplaint}</p>
+                  <div className="flex items-center justify-between mt-1.5 text-[10px] text-gray-400 font-semibold">
+                    <span>{sess.input.age}yo {sess.input.gender.toUpperCase()}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(sess.createdAt).toLocaleDateString()}</span>
                   </div>
                 </button>
@@ -474,322 +468,419 @@ export const ClinicalCopilot: React.FC = () => {
         </div>
       )}
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col overflow-y-auto relative">
+      {/* ─── MAIN WORKSPACE CONTENT ─── */}
+      <div className="flex-1 w-full flex flex-col overflow-hidden relative">
+        
+        {/* Top bar header */}
+        <div className="px-6 py-3 border-b border-gray-100 bg-white flex items-center justify-between shrink-0 no-print">
+          <div className="flex items-center gap-3">
+            {!showHistory && (
+              <button 
+                onClick={() => setShowHistory(true)}
+                className="bg-white border border-gray-200 hover:border-gray-300 p-2 rounded-lg text-gray-400 hover:text-blue-600 transition-colors"
+                title="View Past Sessions"
+              >
+                <History className="h-4 w-4" />
+              </button>
+            )}
+            <div>
+              <h2 className="text-sm font-bold text-[#111111] tracking-tight">Consultation Scribe Workspace</h2>
+              <p className="text-[10px] text-gray-400 font-medium">Record patient history and complaints to synthesize clinical diagnostics</p>
+            </div>
+          </div>
 
-        {/* History Toggle Button */}
-        {!showHistory && (
-          <button 
-            onClick={() => setShowHistory(true)}
-            className="absolute top-4 left-4 z-20 bg-white border border-[#E2E8F0] shadow-sm rounded-xl p-2.5 text-[#64748B] hover:text-teal-600 hover:border-teal-200 transition-colors"
-            title="View Past Sessions"
-          >
-            <History className="h-5 w-5" />
-          </button>
-        )}
+          <div className="flex items-center gap-2">
+            {!output && !isLoading && (
+              <button
+                onClick={loadDemoData}
+                className="px-3.5 py-1.5 rounded-lg border border-indigo-200/60 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                <span>Try Demo Case</span>
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* ─── LIVE TRANSCRIPT / LISTENING STATE ─── */}
-        {(isListening || ambientTranscript) && !output && !isLoading && (
-          <div className="h-full flex flex-col items-center justify-center p-10">
-            <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 w-full max-w-2xl text-center space-y-6 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-b from-teal-50/50 to-transparent pointer-events-none" />
+        {/* Workspace Panels */}
+        <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA]">
+
+          {/* Unified Input State */}
+          {!output && !isLoading && (
+            <div className="max-w-3xl mx-auto space-y-6 fade-in-up">
               
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="h-20 w-20 rounded-full bg-teal-50 border-8 border-white shadow-sm flex items-center justify-center text-teal-500 mb-6 relative">
-                  <div className="absolute inset-0 rounded-full bg-teal-400 opacity-20 animate-ping"></div>
-                  <Mic className="h-8 w-8 relative z-10" />
+              {/* Clinical Intro Banner */}
+              <div className="text-center space-y-2 py-4">
+                <div className="h-12 w-12 rounded-2xl bg-blue-50 border border-blue-100/50 flex items-center justify-center text-blue-600 mx-auto shadow-sm">
+                  <Stethoscope className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold text-[#0F172A] mb-2">Listening to Consultation...</h3>
-                <p className="text-sm text-[#64748B] mb-8">Speak naturally. The AI will extract symptoms when you're done.</p>
+                <h3 className="text-lg font-bold text-[#111111] tracking-tight">Consultation Dictation & Notes</h3>
+                <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+                  Type the patient's complaints or start real-time voice dictation. MedSynexa will generate clinical guidelines, safety alerts, and prescriptions.
+                </p>
+              </div>
+
+              {/* Core Form Card */}
+              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6 space-y-5">
                 
-                <div className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-6 min-h-[120px] text-left text-base text-[#334155] leading-relaxed relative">
-                  {ambientTranscript || interimTranscript ? (
-                    <>
-                      <span>{ambientTranscript}</span>
-                      <span className="text-teal-600/60 italic ml-1">{interimTranscript}</span>
-                    </>
-                  ) : (
-                    <span className="text-[#94A3B8] italic">Waiting for speech...</span>
-                  )}
-                  {isListening && <span className="inline-block w-2 h-5 bg-teal-500 ml-1 animate-pulse align-middle"></span>}
-                </div>
-
-                <div className="mt-8 flex items-center gap-4">
-                  <button
-                    onClick={toggleListening}
-                    disabled={isWhisperProcessing}
-                    className={`px-8 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2 ${
-                      isWhisperProcessing
-                      ? 'bg-teal-50 text-teal-600 border border-teal-200 cursor-wait'
-                      : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:shadow-lg'
-                    }`}
-                  >
-                    {isWhisperProcessing ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" /> 
-                        Transcribing...
-                      </>
-                    ) : (
-                      <><MicOff className="h-5 w-5" /> Stop & Generate Matrix</>
-                    )}
-                  </button>
-                  <button onClick={handleClear} className="px-6 py-3.5 rounded-xl text-[#64748B] font-bold text-sm hover:bg-[#F1F5F9] transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── EMPTY STATE (FULL SCREEN) ─── */}
-        {!output && !isLoading && !isListening && !ambientTranscript && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-10">
-            <div className="max-w-xl flex flex-col items-center relative z-10 fade-in-up">
-              <div className="h-24 w-24 rounded-full bg-teal-50 border-8 border-white shadow-xl flex items-center justify-center text-teal-500 mb-8 relative">
-                <div className="absolute inset-0 rounded-full bg-teal-400 opacity-20 animate-pulse"></div>
-                <Mic className="h-10 w-10 relative z-10" />
-              </div>
-              
-              <h2 className="text-3xl font-extrabold text-[#0F172A] tracking-tight mb-4">
-                Ambient Clinical Scribe
-              </h2>
-              <p className="text-base text-[#64748B] leading-relaxed mb-10 max-w-md">
-                Experience frictionless documentation. Our AI listens to your patient consultation in real-time and instantly generates a comprehensive clinical reasoning matrix.
-              </p>
-
-              <div className="flex items-center justify-center gap-4 w-full px-4">
-                <button
-                  onClick={toggleListening}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-teal-600 text-white font-bold text-base shadow-xl shadow-teal-600/20 hover:bg-teal-700 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                >
-                  <Mic className="h-5 w-5" />
-                  Start Listening
-                </button>
-                <button
-                  onClick={loadDemoData}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-white text-[#0F172A] border-2 border-[#E2E8F0] font-bold text-base shadow-sm hover:bg-[#F8FAFC] hover:border-[#CBD5E1] hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                >
-                  <Wand2 className="h-5 w-5 text-indigo-500" />
-                  Load Demo Matrix
-                </button>
-              </div>
-            </div>
-            
-            {/* Background decorations */}
-            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/50 via-[#F8FAFC] to-[#F8FAFC] pointer-events-none z-0" />
-          </div>
-        )}
-
-        {/* ─── LOADING STATE ─── */}
-        {isLoading && (
-          <div className="h-full flex flex-col items-center justify-center p-10 fade-in-up">
-            <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-10 flex flex-col items-center justify-center max-w-md w-full">
-              <div className="h-16 w-16 border-[4px] border-teal-500 border-t-transparent animate-spin rounded-full mb-6" />
-              <h4 className="text-lg font-bold text-[#0F172A]">Synthesizing Consultation</h4>
-              <p className="text-sm text-[#64748B] mt-2 text-center">Extracting clinical markers & checking ICMR guidelines...</p>
-            </div>
-          </div>
-        )}
-
-        {/* ─── MATRIX OUTPUT ─── */}
-        {output && !isLoading && (
-          <div className="space-y-6 pb-20 fade-in-up" id="clinical-matrix-pdf">
-            
-            {/* Output Header Controls */}
-            <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] px-5 py-4 shadow-sm sticky top-0 z-20">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                </div>
+                {/* Note Field */}
                 <div>
-                  <h3 className="text-base font-bold text-[#0F172A]">Clinical Decision Matrix</h3>
-                  {output.responseTimeMs && (
-                    <p className="text-xs text-green-600 font-semibold flex items-center gap-1 mt-0.5">
-                      <Zap className="h-3 w-3" /> Generated in {output.responseTimeMs} ms
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Chief Complaint & Symptoms
+                    </label>
+                    
+                    {/* Dictation Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      disabled={isWhisperProcessing}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all border ${
+                        isListening
+                          ? 'bg-red-50 border-red-200 text-red-600 animate-pulse'
+                          : isWhisperProcessing
+                          ? 'bg-blue-50 border-blue-200 text-blue-600 cursor-wait'
+                          : 'bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {isWhisperProcessing ? (
+                        <>
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          <span>Transcribing...</span>
+                        </>
+                      ) : isListening ? (
+                        <>
+                          <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-ping" />
+                          <span>Stop Recording</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-3 w-3" />
+                          <span>Start Dictation</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <textarea
+                    value={chiefComplaint}
+                    onChange={(e) => setChiefComplaint(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isListening || isWhisperProcessing}
+                    className={`input-field p-4 text-xs min-h-[140px] resize-none leading-relaxed ${
+                      isListening ? 'border-red-300 ring-2 ring-red-100 bg-red-50/5' : ''
+                    }`}
+                    placeholder={
+                      isListening
+                        ? 'Dictation active. Discuss patient issues now, or click Stop Recording when finished...'
+                        : 'Enter patient history, physical findings, complaints, or vitals...'
+                    }
+                  />
+
+                  {isListening && interimTranscript && (
+                    <p className="text-[10px] text-blue-600 italic mt-1.5 px-1">
+                      Live transcript: {interimTranscript}
                     </p>
                   )}
                 </div>
+
+                {/* Demographics row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                      Patient Age
+                    </label>
+                    <input
+                      type="number"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="input-field px-3.5 py-2.5 text-xs"
+                      placeholder="Age in years (e.g. 28)"
+                      disabled={isListening || isWhisperProcessing}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                      Gender
+                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as any)}
+                      className="input-field px-3.5 py-2 text-xs"
+                      disabled={isListening || isWhisperProcessing}
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Controls row */}
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={handleClear}
+                    disabled={isWhisperProcessing}
+                    className="px-4.5 py-2.5 rounded-xl border border-gray-200 text-gray-500 font-bold text-xs hover:bg-gray-50 transition-colors"
+                  >
+                    Clear Form
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadDemoData}
+                      disabled={isListening || isWhisperProcessing}
+                      className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-700 font-bold text-xs transition-colors"
+                    >
+                      Demo Patient
+                    </button>
+                    
+                    <button
+                      onClick={() => handleAnalyze()}
+                      disabled={isListening || isWhisperProcessing || !chiefComplaint.trim()}
+                      className="btn-primary px-5 py-2.5 text-xs flex items-center gap-2 shadow-md shadow-blue-500/10"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Generate Diagnosis & Rx</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
-              <div className="flex items-center gap-2">
-                {/* Transcript Dropdown / Trigger could go here if needed, but omitted for cleanliness */}
-                <button
-                  onClick={handleClear}
-                  className="btn-ghost px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-xl"
-                >
-                  <RefreshCw className="h-4 w-4" /> Reset Scribe
-                </button>
-                <button
-                  onClick={handleExportPdf}
-                  disabled={isExporting}
-                  className="px-5 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
-                >
-                  {isExporting ? (
-                    <div className="h-4 w-4 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" /> 
-                  ) : <Download className="h-4 w-4" />}
-                  <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
-                </button>
-                <button
-                  onClick={handleCopyPrescription}
-                  className="px-5 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-sm flex items-center gap-2 transition-colors"
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
+
+            </div>
+          )}
+
+          {/* Loading Skeletons */}
+          {isLoading && (
+            <div className="h-full flex items-center justify-center p-10 fade-in-up">
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-8 flex flex-col items-center justify-center max-w-sm w-full shadow-sm text-center">
+                <Loader2 className="h-10 w-10 text-blue-600 animate-spin mb-4" />
+                <h4 className="text-sm font-bold text-[#111111]">Synthesizing Consultation</h4>
+                <p className="text-[11px] text-gray-400 mt-1.5 max-w-xs">Matching clinical symptoms against guidelines and drug indices...</p>
               </div>
             </div>
+          )}
 
-            {/* If there was a transcript, show a collapsed summary of it */}
-            {ambientTranscript && (
-               <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-5 space-y-3">
-                 <div className="flex items-center justify-between">
-                   <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
-                     <MessageSquareQuote className="h-4 w-4 text-indigo-500" />
-                     Consultation Transcript
-                   </h4>
-                   <button 
-                     onClick={handleDownloadTranscript}
-                     className="text-[10px] font-bold text-teal-600 hover:text-teal-800 transition-colors flex items-center gap-1"
-                   >
-                     <Download className="h-3 w-3" /> Download .txt
-                   </button>
-                 </div>
-                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 text-sm text-[#475569] leading-relaxed">
-                   {ambientTranscript}
-                 </div>
-               </div>
-            )}
+          {/* Redesigned Clinical Rx Output Sheet */}
+          {output && !isLoading && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              
+              {/* Sticky Action Bar */}
+              <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200/80 px-5 py-3 shadow-sm sticky top-0 z-20 no-print">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[#111111]">Clinical Prescriptions Compiled</h3>
+                    {output.responseTimeMs && (
+                      <p className="text-[9px] text-green-600 font-bold flex items-center gap-0.5 mt-0.5">
+                        <Zap className="h-2.5 w-2.5" /> Generated in {output.responseTimeMs} ms
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            {/* Safety Flags */}
-            {output.safetyFlags && output.safetyFlags.length > 0 && (
-              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
-                <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 text-amber-500" />
-                  Safety Alerts & Warnings
-                </h4>
-                <div className="grid gap-3">
-                  {output.safetyFlags.map((flag, idx) => {
-                    const isCritical = flag.severity === 'critical';
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-xl text-sm flex items-start gap-3 border ${
-                          isCritical
-                            ? 'bg-red-50 border-red-200 text-red-800'
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
-                        }`}
-                      >
-                        <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${isCritical ? 'text-red-500' : 'text-amber-500'}`} />
-                        <div>
-                          <span className="font-bold uppercase tracking-wider text-[11px] block opacity-70 mb-1">
-                            [{flag.type.replace(/_/g, ' ')}] — {flag.severity}
-                          </span>
-                          <p className="font-medium leading-relaxed">{flag.message}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleClear}
+                    className="btn-ghost px-3.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> New Consultation
+                  </button>
+                  <button
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                    className="px-4 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200/50 hover:bg-blue-100 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : <Printer className="h-3.5 w-3.5" />}
+                    <span>Print Prescription</span>
+                  </button>
+                  <button
+                    onClick={handleCopyPrescription}
+                    className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copied ? 'Copied' : 'Copy to EMR'}</span>
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* Differential Diagnoses */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
-              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
-                <Activity className="h-5 w-5 text-teal-600" />
-                Ranked Differential Diagnoses
-              </h4>
-              <div className="grid gap-3">
-                {output.differentialDiagnoses.map((dd, idx) => {
-                  const cfg = LIKELIHOOD_CONFIG[dd.likelihood] || LIKELIHOOD_CONFIG.low;
-                  return (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }} 
-                      animate={{ opacity: 1, y: 0 }} 
-                      transition={{ duration: 0.4, delay: idx * 0.1 }}
-                      key={idx} className={`p-5 rounded-xl border ${cfg.bg} ${cfg.border}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <span className={`h-7 w-7 rounded-full ${cfg.bg} border ${cfg.border} ${cfg.text} text-xs font-bold flex items-center justify-center`}>
-                            {idx + 1}
-                          </span>
-                          <span className={`font-bold text-lg ${cfg.text}`}>{dd.condition}</span>
-                          {dd.icdCode && (
-                            <span className="badge badge-slate text-[10px] font-mono px-2 py-0.5">ICD: {dd.icdCode}</span>
+              {/* 📄 THE MEDICAL PRESCRIPTION PAD SHEET (Grounded in Guidelines) */}
+              <div 
+                id="clinical-matrix-pdf" 
+                className="bg-white rounded-2xl border-2 border-gray-150 p-8 shadow-md space-y-6 relative overflow-hidden"
+              >
+                
+                {/* Prescription Pad Header */}
+                <div className="border-b-2 border-gray-100 pb-4 flex justify-between items-start">
+                  <div>
+                    <h1 className="text-base font-bold text-blue-600 flex items-center gap-2">
+                      <Stethoscope className="h-5 w-5 text-blue-600 shrink-0" />
+                      MedSynexa Clinical OPD Summary
+                    </h1>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Clinical Decision Support Layer</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-gray-800">
+                      Dr. {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-medium">OPD Consultation Copilot</p>
+                    <p className="text-[10px] text-gray-500 font-mono mt-1">Date: {new Date().toLocaleDateString('en-IN')}</p>
+                  </div>
+                </div>
+
+                {/* Patient Information Section */}
+                <div className="bg-gray-50/70 border border-gray-150 rounded-xl p-4.5 grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+                  <div className="sm:col-span-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Patient Details</span>
+                    <p className="font-bold text-gray-850">{age || 'N/A'} Years · {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'N/A'}</p>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Clinical Note / Presentation</span>
+                    <p className="text-gray-700 leading-relaxed font-semibold">{chiefComplaint}</p>
+                  </div>
+                </div>
+
+                {/* Safety Alerts Banners (Critical Warning Block) */}
+                {output.safetyFlags && output.safetyFlags.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-[10px] font-bold text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldAlert className="h-4.5 w-4.5 text-red-500" />
+                      CRITICAL SAFETY GUARDRAILS
+                    </h3>
+                    <div className="space-y-2">
+                      {output.safetyFlags.map((flag, idx) => {
+                        const isCritical = flag.severity === 'critical';
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 border ${
+                              isCritical
+                                ? 'bg-red-50/50 border-red-200 text-red-800'
+                                : 'bg-amber-50/50 border-amber-200 text-amber-800'
+                            }`}
+                          >
+                            <AlertTriangle className={`h-4.5 w-4.5 shrink-0 mt-0.5 ${isCritical ? 'text-red-500' : 'text-amber-600'}`} />
+                            <div>
+                              <span className="font-bold text-[9px] uppercase tracking-widest block opacity-75 mb-0.5">
+                                {flag.type.replace(/_/g, ' ')}
+                              </span>
+                              <p className="font-bold leading-relaxed">{flag.message}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Split: Suspected Differentials & Rx */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+                  
+                  {/* Ranked Differential Diagnoses */}
+                  <div className="lg:col-span-5 space-y-3.5">
+                    <h3 className="text-[10px] font-bold text-[#111111] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      Ranked Suspected Diagnoses
+                    </h3>
+                    <div className="space-y-2.5">
+                      {output.differentialDiagnoses.map((dd, idx) => {
+                        const cfg = LIKELIHOOD_CONFIG[dd.likelihood] || LIKELIHOOD_CONFIG.low;
+                        return (
+                          <div key={idx} className={`p-4 rounded-xl border ${cfg.bg} ${cfg.border} space-y-2`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 truncate min-w-0">
+                                <span className={`h-5 w-5 rounded-full ${cfg.bg} border ${cfg.border} ${cfg.text} text-[10px] font-bold flex items-center justify-center shrink-0`}>
+                                  {idx + 1}
+                                </span>
+                                <span className="font-bold text-sm text-[#111111] truncate">{dd.condition}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                {dd.icdCode && (
+                                  <span className="bg-white border border-gray-200 text-gray-500 font-mono text-[9px] px-1.5 py-0.5 rounded">ICD: {dd.icdCode}</span>
+                                )}
+                                <span className="bg-white border border-gray-250 text-[#111111] text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                  {dd.likelihood_percentage}%
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed font-medium">{dd.reasoning}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Treatment Options (Rx Prescription Card) */}
+                  <div className="lg:col-span-7 space-y-3.5">
+                    <h3 className="text-[10px] font-bold text-[#111111] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                      <span className="text-blue-600 font-serif font-bold text-sm">Rx</span>
+                      <span>Treatment Plan & Medications</span>
+                    </h3>
+                    
+                    <div className="space-y-3.5">
+                      {output.treatmentOptions.map((tx, idx) => (
+                        <div key={idx} className="p-4 rounded-xl border border-gray-150 bg-white shadow-sm space-y-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-sm text-gray-850">{tx.drugName}</p>
+                              <p className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Route: {tx.route}</p>
+                            </div>
+                            <span className="bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-md shrink-0">
+                              {tx.dosage} · {tx.frequency} · {tx.duration}
+                            </span>
+                          </div>
+                          
+                          {/* Brand alternatives */}
+                          <div className="flex items-center gap-2 text-xs pt-1 border-t border-gray-50">
+                            <span className="text-[9px] font-bold text-gray-400 uppercase shrink-0">Indian Brands:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {tx.indianBrandNames.map((b, bIdx) => (
+                                <span key={bIdx} className="bg-gray-50 border border-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px] font-semibold">{b}</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Contraindications info */}
+                          {tx.contraindications.length > 0 && (
+                            <div className="text-[10px] text-amber-800 bg-amber-50/50 px-2.5 py-1.5 rounded-lg border border-amber-200/60 font-semibold">
+                              <strong className="text-amber-900 uppercase text-[9px] mr-1">Precaution:</strong> 
+                              {tx.contraindications.join(', ')}
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-semibold uppercase ${cfg.text}`}>{dd.likelihood}</span>
-                          <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-lg border ${cfg.bg} ${cfg.border} ${cfg.text} bg-white`}>
-                            {dd.likelihood_percentage}%
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-[#475569] leading-relaxed pl-10">{dd.reasoning}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Treatment Options */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
-              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
-                <Pill className="h-5 w-5 text-indigo-600" />
-                Treatment Options — Indian Generic & Brands
-              </h4>
-              <div className="grid gap-4">
-                {output.treatmentOptions.map((tx, idx) => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    transition={{ duration: 0.4, delay: (output.differentialDiagnoses.length * 0.1) + (idx * 0.1) }}
-                    key={idx} className="p-5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg text-[#0F172A]">{tx.drugName}</span>
-                        <span className="text-xs text-[#94A3B8] font-mono bg-white px-2 py-0.5 rounded-md border border-[#E2E8F0]">Route: {tx.route}</span>
-                      </div>
-                      <span className="bg-indigo-100 text-indigo-800 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold font-mono shadow-sm">
-                        {tx.dosage} · {tx.frequency} · {tx.duration}
-                      </span>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[#475569]">
-                      <span className="text-xs font-bold text-[#94A3B8] uppercase">Indian Brands:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {tx.indianBrandNames.map((b, bIdx) => (
-                          <span key={bIdx} className="bg-white border border-[#CBD5E1] text-[#475569] px-2 py-0.5 rounded-md text-xs font-medium shadow-sm">{b}</span>
-                        ))}
-                      </div>
-                    </div>
-                    {tx.contraindications.length > 0 && (
-                      <div className="text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200 mt-2">
-                        <strong className="text-amber-900 uppercase text-[10px] mr-1 block mb-0.5">Contraindications</strong> 
-                        {tx.contraindications.join(', ')}
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+                  </div>
 
-            {/* Diagnostic Next Steps */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
-              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
-                <FileText className="h-5 w-5 text-emerald-600" />
-                Diagnostic Next Steps
-              </h4>
-              <ul className="space-y-3 bg-[#F8FAFC] border border-[#E2E8F0] p-5 rounded-xl">
-                {output.diagnosticNextSteps.map((step, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-base text-[#334155] font-medium">
-                    <ChevronRight className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ul>
+                </div>
+
+                {/* Recommended Diagnostics / Referrals */}
+                <div className="bg-gray-50/40 border border-gray-150 p-5 rounded-2xl space-y-3 mt-4">
+                  <h3 className="text-[10px] font-bold text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="h-4.5 w-4.5 text-emerald-600 font-bold" />
+                    Recommended Diagnostics & Follow-ups
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white border border-gray-150 p-4 rounded-xl shadow-sm">
+                    {output.diagnosticNextSteps.map((step, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-xs text-gray-600 font-semibold">
+                        <ChevronRight className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+              </div>
+
             </div>
-          </div>
-        )}
+          )}
+
+        </div>
       </div>
     </div>
   );
