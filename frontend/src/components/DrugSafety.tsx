@@ -103,7 +103,7 @@ export const DrugSafety = () => {
                 <option value="">Select a patient...</option>
                 {patients.map(p => (
                   <option key={p._id} value={p._id}>
-                    {p.name} ({p.age}y {p.gender})
+                    {p.name} ({p.age}y {p.gender}{p.weight ? ` • ${p.weight}kg` : ''})
                   </option>
                 ))}
               </select>
