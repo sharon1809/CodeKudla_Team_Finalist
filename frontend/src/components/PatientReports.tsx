@@ -27,6 +27,7 @@ interface PatientReportsProps {
 export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => {
   const [name, setName] = useState('');
   const [age, setAge] = useState<string>('');
+  const [weight, setWeight] = useState<string>('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [condition, setCondition] = useState('');
   const [documentId, setDocumentId] = useState<string>(documents.length > 0 ? documents[0]._id : '');
@@ -37,8 +38,7 @@ export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => 
 
   const textbooks = documents;
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async () => {
     if (!name || !age || !condition || !documentId) {
       setError('Please fill in all fields and select a textbook.');
       return;
@@ -55,6 +55,7 @@ export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => 
         gender,
         contactNumber: '',
         medicalHistory: '',
+        weight: weight ? Number(weight) : undefined,
       });
       const patientId = patientRes.data.patient._id;
 
@@ -141,6 +142,16 @@ export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => 
                     <option value="other">Other</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Weight (kg)</label>
+                <input
+                  type="number"
+                  value={weight}
+                  onChange={e => setWeight(e.target.value)}
+                  className="input-field px-3 py-2 text-xs"
+                  placeholder="e.g. 68"
+                />
               </div>
             </div>
           </div>
