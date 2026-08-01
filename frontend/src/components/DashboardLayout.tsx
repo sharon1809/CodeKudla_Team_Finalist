@@ -23,6 +23,7 @@ import {
   Layers,
   CheckCircle,
   AlertTriangle,
+  Users,
 } from 'lucide-react';
 
 interface Document {
@@ -51,8 +52,8 @@ interface DashboardLayoutProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
-  activeTab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor';
-  setActiveTab: (tab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor') => void;
+  activeTab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients';
+  setActiveTab: (tab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients') => void;
   activeChat: Chat | null;
   onNewChatCreated?: () => void;
   children: React.ReactNode;
@@ -88,6 +89,12 @@ const NAV_ITEMS = [
     label: 'Reference Library',
     sub: 'Manage clinical documents',
     icon: Layers,
+  },
+  {
+    id: 'manage_patients' as const,
+    label: 'Manage Patients',
+    sub: 'Patient Directory',
+    icon: Users,
   },
   {
     id: 'xray_tech' as const,

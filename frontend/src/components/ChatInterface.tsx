@@ -90,11 +90,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
       recognitionRef.current.onerror = (event: any) => {
         if (event.error === 'no-speech') return;
         console.warn('Speech recognition warning:', event.error);
-        setIsListening(false);
       };
 
       recognitionRef.current.onend = () => {
-        setIsListening(false);
         let fullText = baseTranscriptRef.current;
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();

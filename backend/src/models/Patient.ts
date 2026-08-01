@@ -12,6 +12,9 @@ const patientSchema = new Schema<IPatient>(
       type: Number,
       required: true,
     },
+    weight: {
+      type: Number,
+    },
     gender: {
       type: String,
       enum: ['male', 'female', 'other'],
@@ -26,9 +29,9 @@ const patientSchema = new Schema<IPatient>(
       ref: 'User',
       required: true,
     },
-    medicalHistory: {
+    medicalHistory: [{
       type: String,
-    },
+    }],
     allergies: [{ type: String }],
     currentMedications: [{
       drugName: String,

@@ -10,6 +10,7 @@ import { saveUploadedFile, getFileUrl, cleanupTempFile } from './storageService'
 export const generateAndUploadReportPDF = async (
   reportText: string,
   studyType: string,
+  modality: string,
   patientName: string,
   doctorName: string,
   patientId: string
@@ -36,7 +37,7 @@ export const generateAndUploadReportPDF = async (
     doc.moveDown();
 
     // Patient & Study Details
-    doc.fontSize(12).font('Helvetica-Bold').text('RADIOLOGY REPORT');
+    doc.fontSize(12).font('Helvetica-Bold').text(`${modality.toUpperCase()} REPORT`);
     doc.moveDown();
     doc.font('Helvetica').fontSize(10);
     doc.text(`Patient Name: ${patientName}`);

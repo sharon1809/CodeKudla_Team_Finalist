@@ -13,6 +13,7 @@ import { PatientReports } from '../../components/PatientReports';
 import XrayTechDashboard from '../../components/XrayTech';
 import XrayDoctorDashboard from '../../components/XrayDoctor';
 import { DrugSafety } from '../../components/DrugSafety';
+import ManagePatients from '../../components/ManagePatients';
 import { Stethoscope } from 'lucide-react';
 
 interface DocumentItem {
@@ -30,7 +31,7 @@ export default function DashboardPage() {
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor'>('copilot');
+  const [activeTab, setActiveTab] = useState<'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients'>('copilot');
 
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
   const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
@@ -180,6 +181,7 @@ export default function DashboardPage() {
       {activeTab === 'chat' && <ChatInterface chat={activeChat} onRefreshChat={handleRefreshChat} />}
       {activeTab === 'xray_tech' && <XrayTechDashboard />}
       {activeTab === 'xray_doctor' && <XrayDoctorDashboard />}
+      {activeTab === 'manage_patients' && <ManagePatients />}
     </DashboardLayout>
   );
 }

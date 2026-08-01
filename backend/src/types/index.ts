@@ -146,10 +146,11 @@ export interface IReportAnalysis extends MongoDocument {
 export interface IPatient extends MongoDocument {
   name: string;
   age: number;
+  weight?: number;
   gender: 'male' | 'female' | 'other';
   contactNumber?: string;
   doctorId: Types.ObjectId;
-  medicalHistory?: string;
+  medicalHistory?: string[];
   allergies?: string[];
   currentMedications?: {
     drugName?: string;

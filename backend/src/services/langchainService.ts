@@ -6,6 +6,7 @@ import { StringOutputParser } from '@langchain/core/output_parsers';
 import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { z } from 'zod';
 import { VectorMatch, IMessage, ICitation } from '../types';
+import { queryDocumentChunks } from './pgvectorService';
 
 // ─── Custom OpenRouter Embeddings Client ─────────────────────────────────────
 export class OpenRouterEmbeddings extends Embeddings {
@@ -157,6 +158,13 @@ export const getBatchEmbeddings = async (texts: string[]): Promise<number[][]> =
   }
 
   return results;
+};
+
+// ─── Medical Library RAG Search ─────────────────────────────────────────────
+
+export const searchMedicalLibrary = async (userId: string, query: string, topK = 5): Promise<VectorMatch[]> => {
+  const queryEmbedding = await getQueryEmbedding(query);
+  return await queryDocumentChunks(userId, queryEmbedding, topK, { queryText: query });
 };
 
 // ─── Document Chat Chain ──────────────────────────────────────────────────────

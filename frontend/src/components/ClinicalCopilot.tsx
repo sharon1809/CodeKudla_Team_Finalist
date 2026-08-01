@@ -149,6 +149,8 @@ export const ClinicalCopilot: React.FC = () => {
 
   const [output, setOutput] = useState<ClinicalOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const isListeningRef = useRef(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
@@ -207,24 +209,36 @@ export const ClinicalCopilot: React.FC = () => {
         const separator = baseTranscriptRef.current && final ? ' ' : '';
         const currentText = baseTranscriptRef.current + separator + final.trim();
         setAmbientTranscript(currentText);
-        setChiefComplaint(currentText);
+        
+        const displaySeparator = currentText && interim ? ' ' : '';
+        setChiefComplaint(currentText + displaySeparator + interim);
         setInterimTranscript(interim);
       };
 
       recognitionRef.current.onerror = (event: any) => {
         if (event.error === 'no-speech') return;
         console.warn('Speech recognition warning:', event.error);
-        setIsListening(false);
+        if (event.error === 'network' || event.error === 'not-allowed') {
+          setSpeechError("Live preview blocked by browser privacy (Brave Shields). Audio is still recording securely for Whisper API!");
+        }
       };
 
       recognitionRef.current.onend = () => {
-        setIsListening(false);
         let fullText = baseTranscriptRef.current;
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
         setAmbientTranscript(fullText);
         setChiefComplaint(fullText);
         setInterimTranscript('');
+        
+        // Auto-restart if user hasn't explicitly stopped it
+        if (isListeningRef.current) {
+          try {
+            recognitionRef.current?.start();
+          } catch (e) {
+            console.error('Failed to restart speech recognition', e);
+          }
+        }
       };
     }
   }, []);
@@ -247,11 +261,18 @@ export const ClinicalCopilot: React.FC = () => {
       };
 
       mediaRecorder.start();
-      recognitionRef.current?.start();
+      isListeningRef.current = true;
+      setSpeechError(null);
+      try {
+        recognitionRef.current?.start();
+      } catch (e) {
+        // already started
+      }
     } catch (err) {
       console.error("Microphone access denied:", err);
       setError("Please allow microphone access to use voice dictation.");
       setIsListening(false);
+      isListeningRef.current = false;
     }
   };
 
@@ -288,6 +309,7 @@ export const ClinicalCopilot: React.FC = () => {
   const toggleListening = async () => {
     if (isListening) {
       setIsListening(false);
+      isListeningRef.current = false;
       setIsWhisperProcessing(true);
       
       try {
@@ -580,6 +602,11 @@ export const ClinicalCopilot: React.FC = () => {
                   {isListening && interimTranscript && (
                     <p className="text-[10px] text-blue-600 italic mt-1.5 px-1">
                       Live transcript: {interimTranscript}
+                    </p>
+                  )}
+                  {isListening && speechError && (
+                    <p className="text-[10px] text-orange-600 italic mt-1.5 px-1">
+                      ⚠️ {speechError}
                     </p>
                   )}
                 </div>

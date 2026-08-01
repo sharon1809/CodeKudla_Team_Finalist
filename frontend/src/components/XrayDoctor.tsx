@@ -107,7 +107,7 @@ export default function XrayDoctorDashboard() {
                     <span className="font-semibold text-gray-900">{study.patientId?.name || 'Unknown Patient'}</span>
                     <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Review</span>
                   </div>
-                  <div className="text-sm text-gray-600">{study.studyType}</div>
+                  <div className="text-sm text-gray-600">{study.modality || 'X-Ray'} - {study.studyType}</div>
                   <div className="text-xs text-gray-400 mt-2">
                     {new Date(study.createdAt).toLocaleDateString()}
                   </div>
@@ -123,7 +123,7 @@ export default function XrayDoctorDashboard() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-[calc(100vh-200px)]">
               <div className="flex justify-between items-center mb-6 border-b pb-4">
                 <div>
-                  <h2 className="text-xl font-bold">{selectedStudy.study.patientId?.name} - {selectedStudy.study.studyType}</h2>
+                  <h2 className="text-xl font-bold">{selectedStudy.study.patientId?.name} - {selectedStudy.study.modality || 'X-Ray'} ({selectedStudy.study.studyType})</h2>
                   <p className="text-sm text-gray-500">Tech: {selectedStudy.study.technicianId?.firstName} {selectedStudy.study.technicianId?.lastName}</p>
                 </div>
                 <div className="text-right">
@@ -136,7 +136,7 @@ export default function XrayDoctorDashboard() {
                   {imageUrl ? (
                     <img 
                       src={imageUrl} 
-                      alt="Patient X-Ray" 
+                      alt="Patient Diagnostic Scan" 
                       className="max-w-full max-h-[400px] object-contain"
                     />
                   ) : (

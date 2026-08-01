@@ -6,6 +6,7 @@ export interface IXrayStudy extends MongoDocument {
   doctorId?: Types.ObjectId;
   technicianId?: Types.ObjectId;
   studyType: string;
+  modality: string; // e.g. 'X-Ray', 'MRI', 'Blood Report', 'CT Scan'
   status: 'draft' | 'tech_submitted' | 'doc_reviewed' | 'approved';
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +43,7 @@ const xrayStudySchema = new Schema<IXrayStudy>(
     doctorId: { type: Schema.Types.ObjectId, ref: 'User' },
     technicianId: { type: Schema.Types.ObjectId, ref: 'User' },
     studyType: { type: String, required: true },
+    modality: { type: String, required: true, default: 'X-Ray' },
     status: { 
       type: String, 
       enum: ['draft', 'tech_submitted', 'doc_reviewed', 'approved'],

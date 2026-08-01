@@ -1,6 +1,7 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { z } from 'zod';
 import * as fs from 'fs';
+import { VectorMatch } from '../types';
 
 // Zod Schema for X-Ray Analysis
 export const xrayAnalysisSchema = z.object({
@@ -21,6 +22,7 @@ export type XrayAnalysisData = z.infer<typeof xrayAnalysisSchema>;
 export const analyzeXrayWithGemini = async (
   filePath: string,
   studyType: string,
+  modality: string = 'X-Ray',
   mimeType: string = 'image/jpeg'
 ): Promise<XrayAnalysisData> => {
   const llm = new ChatGoogleGenerativeAI({
@@ -39,8 +41,8 @@ export const analyzeXrayWithGemini = async (
     content: [
       {
         type: 'text' as const,
-        text: `You are an expert radiology assistant. Analyze this ${studyType} image.
-Return a structured JSON output detailing the study, image quality, specific findings, overall impression, any specific abnormalities, a clinical urgency rating, and your confidence score.`,
+        text: `You are an expert medical assistant specializing in ${modality}. Analyze this ${studyType} image/document.
+Return a structured JSON output detailing the study, image/scan quality, specific findings, overall impression, any specific abnormalities, a clinical urgency rating, and your confidence score.`,
       },
       {
         type: 'media' as const,
@@ -77,4 +79,52 @@ ${data.abnormalities.length > 0 ? data.abnormalities.map(a => '- ' + a).join('\n
 
 Urgency: ${data.urgency}
 AI Confidence: ${(data.confidence * 100).toFixed(0)}%`;
+};
+
+/**
+ * Generates a final professional report grounded in the textbook RAG context
+ */
+export const generateGroundedReport = async (
+  initialFindings: XrayAnalysisData,
+  ragContext: VectorMatch[],
+  modality: string
+): Promise<string> => {
+  const llm = new ChatGoogleGenerativeAI({
+    apiKey: process.env.GEMINI_API_KEY,
+    model: 'gemini-2.5-flash',
+    temperature: 0.2,
+  });
+
+  const contextText = ragContext.length > 0 
+    ? ragContext.map((c, i) => `[Source ${i + 1}] (${c.filename}):\n"${c.content}"`).join('\n\n')
+    : 'No relevant textbook context found.';
+
+  const prompt = `You are a Senior Consultant Medical Professional specializing in ${modality}.
+  
+Your task is to review the initial AI findings of a diagnostic study and synthesize them with established medical literature (provided below) to create a final, highly professional, standard, and medically accepted report.
+
+INITIAL AI FINDINGS:
+Study: ${initialFindings.study}
+Findings: ${initialFindings.findings.join('; ')}
+Impression: ${initialFindings.impression.join('; ')}
+Abnormalities: ${initialFindings.abnormalities.join('; ')}
+Urgency: ${initialFindings.urgency}
+
+TEXTBOOK / GUIDELINE CONTEXT:
+${contextText}
+
+INSTRUCTIONS:
+1. Write a professional medical report appropriate for a ${modality}.
+2. Ensure the terminology is standard and professional.
+3. If the Textbook Context provides relevant diagnostic criteria, next steps, or clinical correlations matching the findings, INCLUDE them and cite them as [Source N].
+4. Format the report using clear headers (e.g., CLINICAL INDICATION, FINDINGS, IMPRESSION, RECOMMENDATIONS).
+5. Output ONLY the raw report text in PLAIN TEXT format. DO NOT use Markdown formatting like **bold** or asterisks, as this will be displayed in a plain text editor. Do not wrap in JSON.`;
+
+  const response: any = await llm.invoke([
+    { role: 'user', content: prompt }
+  ]);
+
+  const responseContent = typeof response.content === 'string' ? response.content : String(response.content);
+  // Strip out remaining markdown bold/italic asterisks or hashes just in case
+  return responseContent.replace(/\*\*/g, '').replace(/__/g, '').replace(/#/g, '').trim();
 };

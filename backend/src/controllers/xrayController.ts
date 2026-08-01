@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { XrayStudy, XrayImage, AIReport, FinalReport } from '../models/Xray';
-import { analyzeXrayWithGemini, generateDraftReportText } from '../services/xrayService';
+import { analyzeXrayWithGemini, generateGroundedReport } from '../services/xrayService';
 import { generateAndUploadReportPDF } from '../services/pdfService';
+import { searchMedicalLibrary } from '../services/langchainService';
 import { sendSMS } from '../services/smsService';
 import { saveUploadedFile, downloadAndDecompressFile } from '../services/storageService';
 import { Types } from 'mongoose';
@@ -10,7 +11,7 @@ import { User } from '../models/User';
 
 export const uploadXray = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { patientId, studyType, view } = req.body;
+    const { patientId, studyType, modality, view } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -21,40 +22,51 @@ export const uploadXray = async (req: Request, res: Response): Promise<void> => 
     // Determine technician ID from auth
     const technicianId = req.user?.id;
 
-    // Handle invalid patientId (e.g. user types "1" in the UI)
-    let actualPatientId = patientId;
     if (!Types.ObjectId.isValid(patientId)) {
-      const firstPatient = await Patient.findOne();
-      if (!firstPatient) {
-        res.status(400).json({ error: 'Invalid Patient ID format and no default patients exist in DB.' });
-        return;
-      }
-      actualPatientId = firstPatient._id;
+      res.status(400).json({ error: 'Invalid Patient ID' });
+      return;
     }
 
     // 1. Analyze with Gemini Vision (Read local file before it gets deleted)
-    const aiResult = await analyzeXrayWithGemini(file.path, studyType, file.mimetype);
-    const draftText = generateDraftReportText(aiResult);
+    console.log(`[XrayController] Starting Gemini Vision analysis for file: ${file.originalname}`);
+    const aiResult = await analyzeXrayWithGemini(file.path, studyType, modality || 'X-Ray', file.mimetype);
+    console.log(`[XrayController] Gemini Vision analysis complete. Findings count: ${aiResult.findings?.length || 0}`);
+    
+    // 2. Search Medical Library (RAG) using initial findings
+    const searchQuery = aiResult.findings.join(' ') + ' ' + aiResult.impression.join(' ');
+    console.log(`[XrayController] Searching Medical Library (RAG) with query: ${searchQuery.substring(0, 50)}...`);
+    const ragContext = await searchMedicalLibrary(technicianId as string, searchQuery, 4);
+    console.log(`[XrayController] RAG Search complete. Found ${ragContext.length} relevant chunks.`);
 
-    // 2. Save uploaded file to Storage (This deletes the local temp file)
-    const imagePath = await saveUploadedFile(file.path, file.originalname, actualPatientId.toString());
+    // 3. Generate Grounded Report using RAG context
+    console.log(`[XrayController] Generating Grounded Report...`);
+    const draftText = await generateGroundedReport(aiResult, ragContext, modality || 'X-Ray');
+    console.log(`[XrayController] Grounded Report generated. Length: ${draftText.length} characters.`);
 
-    // 3. Create XrayStudy in DB
+    // 4. Save uploaded file to Storage (This deletes the local temp file)
+    console.log(`[XrayController] Saving file to Supabase storage...`);
+    const imagePath = await saveUploadedFile(file.path, file.originalname, patientId.toString());
+    console.log(`[XrayController] File saved to storage at path: ${imagePath}`);
+
+    // 5. Create XrayStudy in DB
+    console.log(`[XrayController] Creating DiagnosticStudy in DB...`);
     const study = await XrayStudy.create({
-      patientId: actualPatientId,
+      patientId: patientId,
       technicianId,
       studyType,
+      modality: modality || 'X-Ray',
       status: 'draft',
     });
+    console.log(`[XrayController] Study created successfully with ID: ${study._id}`);
 
-    // 4. Create XrayImage
+    // 6. Create XrayImage
     await XrayImage.create({
       studyId: study._id,
       imageUrl: imagePath,
       view,
     });
 
-    // 5. Save AI Report to DB
+    // 7. Save AI Report to DB
 
     await AIReport.create({
       studyId: study._id,
@@ -163,6 +175,7 @@ export const doctorApprove = async (req: Request, res: Response): Promise<void> 
     const pdfUrl = await generateAndUploadReportPDF(
       finalReportText,
       study.studyType,
+      study.modality || 'X-Ray',
       patient.name,
       docName,
       patient._id.toString()

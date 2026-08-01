@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadCloud, CheckCircle, RefreshCcw, FileText, Send, User } from 'lucide-react';
 import { api } from '../lib/api';
 import { motion } from 'framer-motion';
@@ -9,8 +9,23 @@ import { toast, Toaster } from 'react-hot-toast';
 export default function XrayTechDashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [patientId, setPatientId] = useState('');
+  const [patients, setPatients] = useState<any[]>([]);
+  const [modality, setModality] = useState('X-Ray');
   const [studyType, setStudyType] = useState('Chest X-ray');
   const [view, setView] = useState('PA');
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const res = await api.get('/patients');
+        setPatients(res.data);
+        if (res.data.length > 0) setPatientId(res.data[0]._id);
+      } catch (err) {
+        toast.error('Failed to load patients');
+      }
+    };
+    fetchPatients();
+  }, []);
   
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -27,6 +42,7 @@ export default function XrayTechDashboard() {
     const formData = new FormData();
     formData.append('image', file);
     formData.append('patientId', patientId);
+    formData.append('modality', modality);
     formData.append('studyType', studyType);
     formData.append('view', view);
 
@@ -78,15 +94,33 @@ export default function XrayTechDashboard() {
           <form onSubmit={handleUpload} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
-                <input 
-                  type="text" 
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+                <select 
                   value={patientId}
                   onChange={(e) => setPatientId(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="Enter Patient ID"
+                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                   required
-                />
+                >
+                  {patients.length === 0 && <option value="">No patients found...</option>}
+                  {patients.map(p => (
+                    <option key={p._id} value={p._id}>
+                      {p.name} (ID: {p._id.slice(-6)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modality</label>
+                <select 
+                  value={modality}
+                  onChange={(e) => setModality(e.target.value)}
+                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="X-Ray">X-Ray</option>
+                  <option value="MRI">MRI</option>
+                  <option value="Blood Report">Blood Report</option>
+                  <option value="CT Scan">CT Scan</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Study Type</label>
@@ -99,6 +133,8 @@ export default function XrayTechDashboard() {
                   <option value="Knee X-ray">Knee X-ray</option>
                   <option value="Hand X-ray">Hand X-ray</option>
                   <option value="Pelvis X-ray">Pelvis X-ray</option>
+                  <option value="Brain MRI">Brain MRI</option>
+                  <option value="Complete Blood Count">Complete Blood Count</option>
                 </select>
               </div>
               <div>
