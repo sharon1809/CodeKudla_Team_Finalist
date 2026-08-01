@@ -119,6 +119,18 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({ onStartChatWithDoc
     }
   };
 
+  const handleViewFile = async (docId: string, mimeType: string) => {
+    try {
+      const res = await api.get(`/documents/${docId}/file`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: mimeType || 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000); // cleanup
+    } catch (err: any) {
+      alert('Failed to view document. Ensure you have access.');
+    }
+  };
+
   // Filtered documents
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch = doc.filename.toLowerCase().includes(searchQuery.toLowerCase());
@@ -289,15 +301,13 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({ onStartChatWithDoc
 
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                    <a
-                      href={`http://localhost:3000/api/documents/${doc._id}/file`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      onClick={() => handleViewFile(doc._id, doc.mimeType)}
                       className="text-xs text-teal-400 hover:underline font-semibold flex items-center gap-1"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View File
-                    </a>
+                    </button>
 
                     <div className="flex items-center gap-1">
                       <button

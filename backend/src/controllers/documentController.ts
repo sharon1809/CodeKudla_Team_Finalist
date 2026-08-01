@@ -3,9 +3,8 @@ import { Document } from '../models/Document';
 import { Chat } from '../models/Chat';
 import { ReportAnalysis } from '../models/ReportAnalysis';
 import { processDocumentPipeline } from '../rag/ragPipeline';
-import { deleteUploadedFile } from '../services/storageService';
+import { deleteUploadedFile, downloadAndDecompressFile } from '../services/storageService';
 import { deleteDocumentChunks } from '../services/pgvectorService';
-import fs from 'fs';
 
 /**
  * Handle document upload and trigger the RAG pipeline
@@ -77,14 +76,21 @@ export const getDocumentFile = async (req: Request, res: Response): Promise<void
     const { id } = req.params;
 
     const document = await Document.findOne({ _id: id, owner: userId });
-    if (!document || !fs.existsSync(document.localPath)) {
-      res.status(404).json({ message: 'Document file not found' });
+
+    if (!document) {
+      res.status(404).json({ message: 'Document not found' });
       return;
     }
 
-    res.setHeader('Content-Type', document.mimeType || 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${document.filename}"`);
-    fs.createReadStream(document.localPath).pipe(res);
+    try {
+      const uncompressedBuffer = await downloadAndDecompressFile(document.localPath);
+      res.setHeader('Content-Type', document.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${document.filename}"`);
+      res.send(uncompressedBuffer);
+    } catch (err: any) {
+      res.status(404).json({ message: 'Document file not found in storage' });
+      return;
+    }
   } catch (error: any) {
     res.status(500).json({ message: 'Error serving document file', error: error.message });
   }
@@ -142,9 +148,9 @@ export const deleteDocument = async (req: Request, res: Response): Promise<void>
     console.log(`Deleting pgvector embeddings for document: ${id}`);
     await deleteDocumentChunks(id, userId);
 
-    // 2. Delete file from local disk
-    console.log(`Deleting file from disk: ${document.localPath}`);
-    deleteUploadedFile(document.localPath);
+    // 2. Delete file from Supabase Storage
+    console.log(`Deleting file from storage: ${document.localPath}`);
+    await deleteUploadedFile(document.localPath);
 
     // 3. Delete associated chats & lab report analyses
     await Chat.deleteMany({ document: id, owner: userId });

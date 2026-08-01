@@ -95,16 +95,15 @@ export const initPgVector = async (): Promise<void> => {
         ON document_embeddings(document_type);
     `);
 
-    // IVFFlat index for approximate nearest-neighbor search
-    // (Created only if the table has data, so we use a safe check)
+    // Drop IVFFlat index if it exists
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_doc_embeddings_vector
-        ON document_embeddings USING ivfflat (embedding vector_cosine_ops)
-        WITH (lists = 100);
-    `).catch(() => {
-      // IVFFlat needs at least 1 row — skip if table is empty
-      console.log('ℹ️  Vector index will be created after first document upload.');
-    });
+      DROP INDEX IF EXISTS idx_doc_embeddings_vector;
+    `);
+
+    // Note: Both HNSW and IVFFlat indexes in pgvector have a maximum dimension limit of 2000.
+    // Since we are using 2048-dimensional embeddings (Nemotron), we must use Exact Nearest Neighbor search (no index).
+    // Exact search is 100% accurate and extremely fast for < 100k chunks.
+    console.log('ℹ️  Using Exact Nearest Neighbor search (2048 dimensions exceeds pgvector index limit).');
 
     console.log('✅ PostgreSQL + pgvector initialized');
   } finally {

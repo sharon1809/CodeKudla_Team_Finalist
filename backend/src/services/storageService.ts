@@ -1,43 +1,66 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import zlib from 'zlib';
+import { createClient } from '@supabase/supabase-js';
 
-const getUploadDir = (): string => {
-  return path.join(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
-};
+// Initialize Supabase Client for Storage
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const BUCKET_NAME = 'documents';
 
 /**
- * Move a temp uploaded file to permanent storage with a stable name.
- * Returns the permanent file path.
+ * Compress the temp file and upload it to Supabase Storage.
+ * Returns the Supabase path (e.g., `userId/filename.gz`).
  */
-export const saveUploadedFile = (
+export const saveUploadedFile = async (
   tempPath: string,
   originalName: string,
   userId: string
-): string => {
-  const uploadDir = getUploadDir();
-  const userDir = path.join(uploadDir, userId);
-
-  if (!fs.existsSync(userDir)) {
-    fs.mkdirSync(userDir, { recursive: true });
-  }
-
+): Promise<string> => {
   const ext = path.extname(originalName).toLowerCase();
   const safeName = `${uuidv4()}${ext}`;
-  const permanentPath = path.join(userDir, safeName);
+  const supabasePath = `${userId}/${safeName}.gz`;
 
-  fs.renameSync(tempPath, permanentPath);
-  return permanentPath;
+  try {
+    // Read the uncompressed file
+    const fileBuffer = fs.readFileSync(tempPath);
+
+    // Compress using gzip
+    console.log(`🗜️ Compressing file before upload...`);
+    const compressedBuffer = zlib.gzipSync(fileBuffer);
+
+    // Upload to Supabase Storage
+    console.log(`☁️ Uploading compressed file to Supabase Storage: ${supabasePath}`);
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(supabasePath, compressedBuffer, {
+        contentType: 'application/gzip',
+        upsert: true,
+      });
+
+    if (error) {
+      throw new Error(`Supabase upload failed: ${error.message}`);
+    }
+
+    return supabasePath;
+  } finally {
+    // Delete the local temp file to save disk space
+    cleanupTempFile(tempPath);
+  }
 };
 
 /**
- * Delete a file from local storage.
+ * Delete a file from Supabase Storage.
  */
-export const deleteUploadedFile = (filePath: string): void => {
+export const deleteUploadedFile = async (supabasePath: string): Promise<void> => {
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log(`🗑️  Deleted file: ${filePath}`);
+    console.log(`🗑️ Deleting file from Supabase Storage: ${supabasePath}`);
+    const { error } = await supabase.storage.from(BUCKET_NAME).remove([supabasePath]);
+    if (error) {
+      console.error('Failed to delete file from Supabase:', error.message);
     }
   } catch (err) {
     console.error('Failed to delete file:', err);
@@ -45,13 +68,37 @@ export const deleteUploadedFile = (filePath: string): void => {
 };
 
 /**
- * Get a public URL path for a stored file (relative, served via Express static).
- * Format: /uploads/{userId}/{filename}
+ * Get a public URL or Signed URL for a stored file.
+ * We'll use a short-lived Signed URL for security.
  */
-export const getFileUrl = (localPath: string): string => {
-  const uploadDir = getUploadDir();
-  const relativePath = path.relative(uploadDir, localPath).replace(/\\/g, '/');
-  return `/uploads/${relativePath}`;
+export const getFileUrl = async (supabasePath: string): Promise<string> => {
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .createSignedUrl(supabasePath, 3600); // 1 hour expiry
+
+  if (error || !data) {
+    throw new Error('Failed to generate signed URL');
+  }
+  return data.signedUrl;
+};
+
+/**
+ * Download the compressed file from Supabase and decompress it.
+ * Returns the uncompressed Buffer.
+ */
+export const downloadAndDecompressFile = async (supabasePath: string): Promise<Buffer> => {
+  const { data, error } = await supabase.storage.from(BUCKET_NAME).download(supabasePath);
+  
+  if (error || !data) {
+    throw new Error(`Failed to download file from Supabase: ${error?.message}`);
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  const compressedBuffer = Buffer.from(arrayBuffer);
+  
+  // Decompress
+  const uncompressedBuffer = zlib.gunzipSync(compressedBuffer);
+  return uncompressedBuffer;
 };
 
 /**

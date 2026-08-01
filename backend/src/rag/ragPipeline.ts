@@ -47,9 +47,9 @@ export const processDocumentPipeline = async (
     const textsOnly = chunks.map((c) => c.text);
     const embeddings = await getBatchEmbeddings(textsOnly);//opemrouter
 
-    // 4. Save file permanently to local disk
-    console.log(`Saving file to permanent local storage`);
-    const permanentPath = saveUploadedFile(filePath, originalName, userId);//cloud 
+    // 4. Compress and save file permanently to Supabase Storage
+    console.log(`Compressing and saving file to Supabase Storage`);
+    const permanentPath = await saveUploadedFile(filePath, originalName, userId);
 
     // 5. Create Document Metadata in MongoDB
     console.log(`Saving document metadata to MongoDB`);
