@@ -29,6 +29,13 @@ const patientSchema = new Schema<IPatient>(
     medicalHistory: {
       type: String,
     },
+    allergies: [{ type: String }],
+    currentMedications: [{
+      drugName: String,
+      dosage: String,
+      frequency: String,
+      startDate: Date
+    }],
   },
   {
     timestamps: true,

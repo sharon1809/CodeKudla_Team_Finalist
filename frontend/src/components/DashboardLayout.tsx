@@ -51,8 +51,8 @@ interface DashboardLayoutProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
-  activeTab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor';
-  setActiveTab: (tab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor') => void;
+  activeTab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor';
+  setActiveTab: (tab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor') => void;
   activeChat: Chat | null;
   onNewChatCreated?: () => void;
   children: React.ReactNode;
@@ -64,6 +64,12 @@ const NAV_ITEMS = [
     label: 'Consultation Scribe',
     sub: 'OPD decision support',
     icon: Activity,
+  },
+  {
+    id: 'drug_safety' as const,
+    label: 'Drug Safety Copilot',
+    sub: 'Evaluate polypharmacy',
+    icon: AlertTriangle,
   },
   {
     id: 'patient_reports' as const,

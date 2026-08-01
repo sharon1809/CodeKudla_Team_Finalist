@@ -150,6 +150,13 @@ export interface IPatient extends MongoDocument {
   contactNumber?: string;
   doctorId: Types.ObjectId;
   medicalHistory?: string;
+  allergies?: string[];
+  currentMedications?: {
+    drugName?: string;
+    dosage?: string;
+    frequency?: string;
+    startDate?: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
