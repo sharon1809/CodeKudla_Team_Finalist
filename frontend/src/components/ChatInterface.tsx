@@ -48,7 +48,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
   
-  // Robust state tracking to prevent dropped words
   const baseTranscriptRef = useRef<string>('');
   const finalRef = useRef<string>('');
   const interimRef = useRef<string>('');
@@ -57,7 +56,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages, isSubmitting]);
 
-  // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -97,7 +95,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
 
       recognitionRef.current.onend = () => {
         setIsListening(false);
-        // Commit any leftover interim text if the browser aborted prematurely
         let fullText = baseTranscriptRef.current;
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
@@ -110,14 +107,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
 
   if (!chat) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8 gap-4">
-        <div className="h-14 w-14 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center">
-          <MessageSquare className="h-7 w-7 text-[#CBD5E1]" />
+      <div className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-gray-200 p-8 gap-3.5 text-center">
+        <div className="h-12 w-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400">
+          <MessageSquare className="h-6 w-6" />
         </div>
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-[#0F172A]">No Consultation Active</h3>
-          <p className="text-xs mt-1.5 text-[#94A3B8] max-w-xs leading-relaxed">
-            Select a document from the library and start a Q&A session to chat with your medical textbooks or journals.
+        <div>
+          <h3 className="text-xs font-bold text-gray-800">No Active Query</h3>
+          <p className="text-[10px] mt-1 text-gray-400 max-w-xs leading-normal">
+            Select a reference book or report from the library to start a clinical query session.
           </p>
         </div>
       </div>
@@ -158,7 +155,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
     submitQuestion(question);
   };
 
-  // Whisper Processing State
+  // Whisper Recording
   const [isWhisperProcessing, setIsWhisperProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -177,7 +174,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
       };
 
       mediaRecorder.start();
-      recognitionRef.current?.start(); // For visual feedback only
+      recognitionRef.current?.start();
     } catch (err) {
       console.error("Microphone access denied:", err);
       setError("Please allow microphone access to use voice dictation.");
@@ -194,8 +191,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
 
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
-        // Release the microphone
         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
         
         const formData = new FormData();
@@ -234,7 +229,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
           submitQuestion(fullText);
         }
       } catch (err) {
-        // Fallback to the browser's buggy text if Whisper API fails
         let fullText = baseTranscriptRef.current;
         if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
         if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
@@ -248,7 +242,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
         setIsWhisperProcessing(false);
       }
     } else {
-      baseTranscriptRef.current = question; // Capture whatever they typed so far
+      baseTranscriptRef.current = question;
       finalRef.current = '';
       interimRef.current = '';
       setInterimTranscript('');
@@ -265,7 +259,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
     text += `==========================================\n\n`;
     
     chat.messages.forEach(msg => {
-      const role = msg.role === 'user' ? 'Doctor / Patient' : 'MedSynexa AI';
+      const role = msg.role === 'user' ? 'Doctor' : 'MedSynexa AI';
       text += `[${role}]:\n${msg.content}\n\n`;
     });
     
@@ -279,20 +273,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden relative">
+    <div className="h-full flex flex-col bg-white overflow-hidden relative">
 
       {/* ── Header ── */}
-      <div className="px-5 py-3.5 border-b border-[#F1F5F9] bg-white flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`icon-container ${isLabDoc ? 'icon-cyan' : 'icon-teal'} h-9 w-9`}>
+      <div className="px-5 py-3 border-b border-gray-100 bg-white flex items-center justify-between gap-3 shrink-0 no-print">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`icon-container ${isLabDoc ? 'icon-cyan' : 'icon-blue'} h-8 w-8`}>
             {isLabDoc ? <FlaskConical className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-[#0F172A] truncate" title={chat.title}>
+            <h2 className="text-xs font-bold text-[#111111] truncate" title={chat.title}>
               {chat.title}
             </h2>
-            <p className="text-[11px] text-[#94A3B8] flex items-center gap-1">
-              <BookOpen className="h-3 w-3 text-teal-500" />
+            <p className="text-[9px] text-gray-400 font-semibold flex items-center gap-1 mt-0.5">
+              <BookOpen className="h-3 w-3 text-blue-500" />
               <span className="truncate">{documentName}</span>
             </p>
           </div>
@@ -301,8 +295,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
         {chat.messages && chat.messages.length > 0 && (
           <button
             onClick={handleDownloadTranscript}
-            className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5 text-teal-700 hover:bg-teal-50 border border-transparent hover:border-teal-100"
-            title="Download full chat transcript"
+            className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5 text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100"
+            title="Download Chat Transcript"
           >
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Download Chat</span>
@@ -311,17 +305,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
       </div>
 
       {/* ── Message Area ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 bg-[#F8FAFC]">
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-[#FAFAFA]">
 
         {(!chat.messages || chat.messages.length === 0) && !isSubmitting && (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-10">
-            <div className="icon-container icon-teal h-12 w-12">
+          <div className="h-full flex flex-col items-center justify-center text-center gap-3.5 py-10">
+            <div className="icon-container icon-blue h-12 w-12">
               <Stethoscope className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[#0F172A]">Ready for Medical Q&A</h3>
-              <p className="text-xs text-[#94A3B8] mt-1 max-w-xs leading-relaxed">
-                Ask questions or dictate patient symptoms to query <span className="font-semibold text-[#475569]">{documentName}</span>. Answers are grounded in your uploaded document.
+              <h3 className="text-xs font-bold text-gray-800">Reference Consultation Active</h3>
+              <p className="text-[10px] text-gray-400 mt-1 max-w-xs leading-normal">
+                Submit questions or dictate symptoms to search <span className="font-semibold text-gray-600">{documentName}</span>.
               </p>
             </div>
           </div>
@@ -332,51 +326,51 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
               {!isUser && (
-                <div className="h-7 w-7 rounded-full bg-teal-100 border border-teal-200 flex items-center justify-center shrink-0 mr-2 mt-1">
-                  <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+                <div className="h-7 w-7 rounded-full bg-blue-50 border border-blue-100/50 flex items-center justify-center shrink-0 mr-2 mt-1 shadow-sm">
+                  <Stethoscope className="h-3.5 w-3.5 text-blue-600" />
                 </div>
               )}
 
-              <div className={`max-w-[85%] sm:max-w-[75%] space-y-2`}>
+              <div className="max-w-[85%] sm:max-w-[75%] space-y-2.5">
                 <div
-                  className={`rounded-2xl px-4 py-3 ${
+                  className={`rounded-2xl px-4 py-3 border ${
                     isUser
-                      ? 'msg-user text-white rounded-br-sm'
-                      : 'msg-ai text-[#0F172A] rounded-bl-sm'
+                      ? 'msg-user border-blue-600 text-white rounded-br-sm shadow-sm'
+                      : 'msg-ai border-gray-250/70 text-[#111111] rounded-bl-sm shadow-sm'
                   }`}
                 >
-                  <div className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isUser ? 'text-white/70' : 'text-[#94A3B8]'}`}>
-                    {isUser ? 'Doctor / Patient' : 'MedSynexa AI'}
+                  <div className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${isUser ? 'text-blue-100' : 'text-gray-400'}`}>
+                    {isUser ? 'Doctor' : 'MedSynexa AI'}
                   </div>
 
-                  <div className={`prose prose-sm max-w-none text-sm leading-relaxed ${isUser ? 'prose-invert' : ''}`}>
+                  <div className={`prose prose-sm max-w-none text-xs leading-relaxed ${isUser ? 'text-white' : 'text-gray-700'}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {msg.content}
                     </ReactMarkdown>
                   </div>
                 </div>
 
-                {/* Citations */}
+                {/* Sources / Citations */}
                 {!isUser && msg.citations && msg.citations.length > 0 && (
                   <div className="space-y-1.5 ml-1">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[#94A3B8]">
-                      <BookOpen className="h-3.5 w-3.5 text-teal-500" />
-                      <span>Sources ({msg.citations.length})</span>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <BookOpen className="h-3.5 w-3.5 text-blue-500" />
+                      <span>References ({msg.citations.length})</span>
                     </div>
 
                     {msg.citations.map((cite, cIdx) => (
                       <details
                         key={cIdx}
-                        className="group border border-[#E2E8F0] rounded-xl bg-white overflow-hidden text-xs"
+                        className="group border border-gray-200/60 rounded-xl bg-white overflow-hidden text-xs shadow-sm"
                       >
-                        <summary className="px-3 py-2 font-medium text-[#475569] hover:bg-[#F8FAFC] cursor-pointer list-none flex items-center justify-between transition-colors">
-                          <span className="flex items-center gap-1.5">
-                            <Quote className="h-3 w-3 text-teal-500" />
-                            <span>Source Segment {cIdx + 1} (Chunk {cite.chunkIndex})</span>
+                        <summary className="px-3 py-2 font-semibold text-gray-600 hover:bg-[#FAFAFA] cursor-pointer list-none flex items-center justify-between transition-colors">
+                          <span className="flex items-center gap-1.5 text-[10px]">
+                            <Quote className="h-3 w-3 text-blue-500 shrink-0" />
+                            <span className="truncate max-w-xs">{cite.sourceName} (Section {cite.chunkIndex + 1})</span>
                           </span>
-                          <span className="text-[10px] text-[#CBD5E1] group-open:rotate-180 transition-transform">▼</span>
+                          <span className="text-[9px] text-gray-300 group-open:rotate-180 transition-transform">▼</span>
                         </summary>
-                        <div className="px-3 py-2.5 bg-[#F8FAFC] text-[#64748B] border-t border-[#E2E8F0] leading-relaxed max-h-32 overflow-y-auto text-[11px]">
+                        <div className="px-3 py-2.5 bg-gray-50 border-t border-gray-100 text-gray-500 leading-relaxed max-h-24 overflow-y-auto text-[10px]">
                           "{cite.text}"
                         </div>
                       </details>
@@ -386,8 +380,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
               </div>
 
               {isUser && (
-                <div className="h-7 w-7 rounded-full bg-teal-600 flex items-center justify-center shrink-0 ml-2 mt-1 shadow-sm">
-                  <Mic className="h-3.5 w-3.5 text-white" />
+                <div className="h-7 w-7 rounded-full bg-blue-100 border border-blue-200/50 flex items-center justify-center shrink-0 ml-2 mt-1 shadow-sm">
+                  <Mic className="h-3.5 w-3.5 text-blue-600" />
                 </div>
               )}
             </div>
@@ -397,13 +391,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
         {/* Typing indicator */}
         {isSubmitting && (
           <div className="flex justify-start">
-            <div className="h-7 w-7 rounded-full bg-teal-100 border border-teal-200 flex items-center justify-center shrink-0 mr-2 mt-1">
-              <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+            <div className="h-7 w-7 rounded-full bg-blue-50 border border-blue-100/50 flex items-center justify-center shrink-0 mr-2 mt-1 shadow-sm">
+              <Stethoscope className="h-3.5 w-3.5 text-blue-600" />
             </div>
-            <div className="bg-white border border-[#E2E8F0] rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] mb-2">MedSynexa AI</div>
-              <div className="flex items-center gap-1 text-teal-600 text-xs font-mono">
-                <span className="typing-cursor">Searching medical literature</span>
+            <div className="bg-white border border-gray-200/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2">MedSynexa AI</div>
+              <div className="flex items-center gap-1 text-blue-600 text-[11px] font-semibold">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Searching clinical library...</span>
               </div>
             </div>
           </div>
@@ -420,12 +415,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
       </div>
 
       {/* ── Input Bar ── */}
-      <div className="px-4 py-3.5 border-t border-[#F1F5F9] bg-white shrink-0">
+      <div className="px-4 py-3 border-t border-gray-100 bg-white shrink-0 no-print">
         
-        {/* Floating Voice Indicator */}
         {isListening && (
-          <div className="absolute bottom-[80px] left-1/2 -translate-x-1/2 bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-            <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+          <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 bg-red-50 border border-red-200 text-red-600 text-[10px] font-bold px-3.5 py-1 rounded-full shadow-md flex items-center gap-1.5 animate-bounce">
+            <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse"></span>
             Listening... Click stop when done
           </div>
         )}
@@ -436,21 +430,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
             type="button"
             onClick={toggleListening}
             disabled={isWhisperProcessing}
-            className={`px-4 py-3 rounded-xl flex items-center justify-center shrink-0 transition-all border ${
+            className={`px-3 py-2.5 rounded-xl flex items-center justify-center shrink-0 transition-all border ${
               isListening 
                 ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 animate-pulse' 
                 : isWhisperProcessing
-                ? 'bg-teal-50 text-teal-600 border-teal-200 cursor-wait'
-                : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9] hover:text-teal-600'
+                ? 'bg-blue-50 text-blue-600 border-blue-200 cursor-wait'
+                : 'bg-gray-50 text-gray-500 border-gray-200/80 hover:bg-gray-100 hover:text-blue-600'
             }`}
             title="Voice Dictation"
           >
             {isWhisperProcessing ? (
-              <div className="h-5 w-5 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : isListening ? (
-              <MicOff className="h-5 w-5" />
+              <MicOff className="h-4.5 w-4.5" />
             ) : (
-              <Mic className="h-5 w-5" />
+              <Mic className="h-4.5 w-4.5" />
             )}
           </button>
 
@@ -465,15 +459,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
                 }
               }}
               disabled={isSubmitting || isWhisperProcessing}
-              className={`input-field w-full px-4 py-3 text-sm resize-none min-h-[46px] max-h-[120px] ${
-                isListening ? 'border-red-300 ring-2 ring-red-100 bg-red-50/30' : ''
+              className={`input-field w-full px-3 py-2.5 text-xs resize-none min-h-[38px] max-h-[100px] ${
+                isListening ? 'border-red-300 ring-2 ring-red-100 bg-red-50/20' : ''
               } ${isWhisperProcessing ? 'opacity-70' : ''}`}
               placeholder={isWhisperProcessing ? "Transcribing audio..." : isListening ? "Listening..." : `Ask about ${documentName}…`}
               rows={1}
-              required={!isListening && !isWhisperProcessing} // Only require if not actively listening
+              required={!isListening && !isWhisperProcessing}
             />
             {isListening && interimTranscript && (
-              <div className="absolute top-full left-0 mt-1 px-4 text-[11px] text-teal-600 italic truncate w-full">
+              <div className="absolute top-full left-0 mt-0.5 px-3 text-[9px] text-blue-600 italic truncate w-full">
                 {interimTranscript}
               </div>
             )}
@@ -482,12 +476,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
           <button
             type="submit"
             disabled={isSubmitting || isWhisperProcessing || (!question.trim() && !isListening)}
-            className="btn-primary px-4 py-3 rounded-xl flex items-center justify-center shrink-0"
+            className="btn-primary px-3.5 py-2.5 rounded-xl flex items-center justify-center shrink-0"
           >
-            <Send className="h-5 w-5" />
+            <Send className="h-4.5 w-4.5" />
           </button>
         </form>
       </div>
     </div>
   );
 };
+
+const Loader2 = ({ className }: { className?: string }) => (
+  <svg className={`${className} animate-spin`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+);

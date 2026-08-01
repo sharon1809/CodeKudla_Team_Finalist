@@ -35,7 +35,7 @@ async function runTest() {
 
     // 1. Create Patient
     console.log('\n🏥 1. Creating a new patient via API...');
-    const createPatientRes = await fetch('http://localhost:3000/api/opd/patients', {
+    const createPatientRes = await fetch('http://localhost:5000/api/opd/patients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -46,7 +46,7 @@ async function runTest() {
         medicalHistory: 'None'
       })
     });
-    
+
     const patientData: any = await createPatientRes.json();
     if (!createPatientRes.ok) throw new Error(patientData.message);
     const patientId = patientData.patient._id;
@@ -55,7 +55,7 @@ async function runTest() {
     // 2. Generate Patient Report using the Textbook
     console.log('\n⚙️ 2. Generating Patient Report from Textbook (This takes ~10-15 seconds)...');
     console.log('Condition: "Hypertension"');
-    const generateRes = await fetch('http://localhost:3000/api/opd/reports/generate', {
+    const generateRes = await fetch('http://localhost:5000/api/opd/reports/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -67,7 +67,7 @@ async function runTest() {
 
     const reportData: any = await generateRes.json();
     if (!generateRes.ok) throw new Error(reportData.message || JSON.stringify(reportData));
-    
+
     console.log('\n🎉 REPORT GENERATED SUCCESSFULLY!');
     console.log('==================================================');
     console.log('🩺 SIMPLE SUMMARY FOR PATIENT:');
