@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
-import { Stethoscope, Lock, Mail, User, ArrowRight, AlertCircle } from 'lucide-react';
+import { Stethoscope, Lock, Mail, User, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useAuth();
@@ -18,7 +19,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
-
     try {
       await register(email, password, firstName, lastName);
     } catch (err: any) {
@@ -30,27 +30,26 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-6 relative">
-      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-teal-600/10 rounded-full blur-[100px] -z-10" />
+      <div className="fixed top-1/4 right-1/4 w-[500px] h-[500px] bg-teal-600/6 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-400/30">
-              <Stethoscope className="h-5 w-5 text-white" />
+      <div className="w-full max-w-md relative z-10 fade-in-up">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-flex flex-col items-center gap-3">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-xl shadow-teal-500/25 border border-teal-400/20 glow-teal">
+              <Stethoscope className="h-7 w-7 text-white" />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-white">
-              MedSynexa <span className="text-teal-400">AI</span>
+            <span className="text-2xl font-extrabold tracking-tight text-white">
+              MedSynexa <span className="gradient-text">AI</span>
             </span>
           </Link>
-          <h1 className="text-xl font-bold text-white">Register Doctor Account</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Join MedSynexa for instant Indian OPD clinical decision support
-          </p>
+          <h1 className="text-lg font-bold text-white mt-4">Create Doctor Account</h1>
+          <p className="text-sm text-[#8fa3bb] mt-1">Join for instant Indian OPD decision support</p>
         </div>
 
-        <div className="glass-panel-glow p-8 rounded-3xl border-teal-500/20">
+        <div className="glass-elevated p-8 rounded-3xl">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-500/20 text-red-200 text-xs flex items-start gap-2.5">
+            <div className="mb-6 p-3.5 rounded-xl bg-red-950/40 border border-red-500/20 text-red-300 text-xs flex items-start gap-2.5">
               <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -59,18 +58,16 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  First Name
-                </label>
+                <label className="block section-label mb-2">First Name</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#4a637a]">
                     <User className="h-4 w-4" />
                   </div>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                    className="input-field pl-9 pr-3 py-2.5"
                     placeholder="Rajesh"
                     required
                   />
@@ -78,14 +75,12 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Last Name
-                </label>
+                <label className="block section-label mb-2">Last Name</label>
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="block w-full px-3 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="input-field px-3 py-2.5"
                   placeholder="Sharma"
                   required
                 />
@@ -93,18 +88,16 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Medical Email
-              </label>
+              <label className="block section-label mb-2">Medical Email</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#4a637a]">
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-900/90 border border-slate-800 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                  className="input-field pl-10 pr-4 py-3"
                   placeholder="dr.sharma@hospital.in"
                   required
                 />
@@ -112,31 +105,37 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Password
-              </label>
+              <label className="block section-label mb-2">Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#4a637a]">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-900/90 border border-slate-800 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
-                  placeholder="••••••••"
+                  className="input-field pl-10 pr-10 py-3"
+                  placeholder="Min. 8 characters"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#4a637a] hover:text-[#8fa3bb] transition-colors"
+                >
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
             <button
               type="submit"
+              id="register-submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-teal-600/20 border border-teal-400/20 transition-all active:scale-[0.98] mt-2"
+              className="btn-primary w-full py-3.5 text-sm flex items-center justify-center gap-2 mt-2"
             >
               {isSubmitting ? (
-                <div className="h-5 w-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full spin" />
               ) : (
                 <>
                   Create Doctor Account
@@ -146,12 +145,23 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-900 text-center text-xs text-slate-400">
+          <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] text-[#4a637a]">
+            <ShieldCheck className="h-3 w-3 text-teal-600" />
+            <span>HIPAA-grade isolation · Data encrypted at rest</span>
+          </div>
+
+          <div className="mt-4 text-center text-xs text-[#8fa3bb]">
             Already registered?{' '}
-            <Link href="/login" className="text-teal-400 hover:underline font-semibold">
+            <Link href="/login" className="text-teal-400 hover:text-teal-300 font-semibold transition-colors">
               Sign In
             </Link>
           </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-xs text-[#4a637a] hover:text-[#8fa3bb] transition-colors">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     </div>

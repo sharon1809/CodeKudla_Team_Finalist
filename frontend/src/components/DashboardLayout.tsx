@@ -7,7 +7,6 @@ import {
   Stethoscope,
   FileText,
   MessageSquare,
-  User as UserIcon,
   LogOut,
   UploadCloud,
   Trash2,
@@ -20,6 +19,8 @@ import {
   FileSearch,
   Activity,
   Key,
+  User as UserIcon,
+  ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 
@@ -35,10 +36,7 @@ interface Document {
 export interface Chat {
   _id: string;
   title: string;
-  document: {
-    _id: string;
-    filename: string;
-  };
+  document: { _id: string; filename: string };
   messages?: any[];
 }
 
@@ -58,6 +56,41 @@ interface DashboardLayoutProps {
   onNewChatCreated?: () => void;
   children: React.ReactNode;
 }
+
+const NAV_ITEMS = [
+  {
+    id: 'copilot' as const,
+    label: 'OPD Clinical Copilot',
+    sub: 'Sub-10s DD & Treatment',
+    icon: Activity,
+    accent: 'text-teal-400',
+    activeClass: 'bg-teal-500/10 text-teal-300 border-teal-500/25',
+  },
+  {
+    id: 'patient_reports' as const,
+    label: 'Textbook Patient Reports',
+    sub: 'RAG literature grounded',
+    icon: FileText,
+    accent: 'text-blue-400',
+    activeClass: 'bg-blue-500/10 text-blue-300 border-blue-500/25',
+  },
+  {
+    id: 'reports' as const,
+    label: 'OCR Lab Report Analyzer',
+    sub: 'Blood tests & pathology',
+    icon: FileSearch,
+    accent: 'text-cyan-400',
+    activeClass: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/25',
+  },
+  {
+    id: 'documents' as const,
+    label: 'Document & Vector Library',
+    sub: '',
+    icon: BookOpen,
+    accent: 'text-emerald-400',
+    activeClass: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+  },
+];
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   documents,
@@ -79,12 +112,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadType, setUploadType] = useState<'general' | 'lab_report'>('general');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  // States for renaming
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingChatTitle, setEditingChatTitle] = useState('');
 
-  // Profile modal
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileFirst, setProfileFirst] = useState(user?.firstName || '');
   const [profileLast, setProfileLast] = useState(user?.lastName || '');
@@ -101,25 +133,34 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     setIsUploading(true);
     setUploadError(null);
+    setUploadProgress(0);
+
+    // Animate progress
+    const interval = setInterval(() => {
+      setUploadProgress((p) => Math.min(p + 8, 90));
+    }, 400);
 
     try {
       await api.post('/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      setUploadProgress(100);
+      setTimeout(() => { setUploadProgress(0); }, 1000);
       onUploadSuccess();
     } catch (err: any) {
-      setUploadError(err.response?.data?.message || 'File upload failed.');
+      setUploadError(err.response?.data?.message || 'Upload failed.');
     } finally {
+      clearInterval(interval);
       setIsUploading(false);
     }
+    // Reset input
+    e.target.value = '';
   };
 
   const handleStartGlobalChat = async () => {
     try {
       const res = await api.post('/chats', { title: 'Global Medical Library Chat' });
-      if (onNewChatCreated) {
-        onNewChatCreated();
-      }
+      if (onNewChatCreated) onNewChatCreated();
       onSelectChat(res.data.chat);
       setActiveTab('chat');
     } catch (err: any) {
@@ -128,9 +169,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const handleSaveChatRename = (chatId: string) => {
-    if (editingChatTitle.trim()) {
-      onRenameChat(chatId, editingChatTitle.trim());
-    }
+    if (editingChatTitle.trim()) onRenameChat(chatId, editingChatTitle.trim());
     setEditingChatId(null);
   };
 
@@ -138,7 +177,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     e.preventDefault();
     setProfileMsg(null);
     setProfileSubmitting(true);
-
     try {
       await updateUser(profileFirst, profileLast, profilePass || undefined);
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
@@ -151,20 +189,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-slate-950 text-slate-100">
-      {/* SIDEBAR */}
-      <aside className="w-80 border-r border-slate-900 bg-slate-950 flex flex-col justify-between overflow-hidden shrink-0">
-        
-        {/* App Header & Brand */}
-        <div className="p-5 border-b border-slate-900 space-y-4">
-          <div className="flex items-center justify-between">
+    <div className="h-screen flex overflow-hidden bg-[#03080f] text-[#f0f6ff]">
+
+      {/* ─── SIDEBAR ────────────────────────────────────────── */}
+      <aside className="w-72 flex flex-col sidebar shrink-0 overflow-hidden">
+
+        {/* Brand Header */}
+        <div className="p-5 border-b border-white/5">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-400/30">
-                <Stethoscope className="h-5 w-5 text-white" />
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-500/20 border border-teal-400/20">
+                <Stethoscope className="h-4 w-4 text-white" />
               </div>
               <div>
-                <span className="font-bold text-white tracking-tight text-sm block">MedSynexa</span>
-                <span className="text-[10px] text-teal-400 font-semibold uppercase">Clinical AI Copilot</span>
+                <p className="text-sm font-bold text-white tracking-tight">MedSynexa</p>
+                <p className="text-[9px] text-teal-400 font-bold uppercase tracking-widest">Clinical AI</p>
               </div>
             </div>
             <button
@@ -174,33 +213,33 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 setProfileMsg(null);
                 setIsProfileOpen(true);
               }}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors"
-              title="Doctor Settings"
+              className="p-2 text-[#4a637a] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              title="Profile Settings"
             >
               <Settings className="h-4 w-4" />
             </button>
           </div>
 
           {/* Upload Widget */}
-          <div className="relative space-y-2">
-            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400">
-              <span>Quick Upload</span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="section-label">Quick Upload</span>
               <select
                 value={uploadType}
                 onChange={(e: any) => setUploadType(e.target.value)}
-                className="bg-slate-900 border border-slate-800 text-[10px] text-teal-400 font-semibold rounded px-1.5 py-0.5"
+                className="bg-transparent border border-white/8 text-[10px] text-teal-400 font-semibold rounded-lg px-2 py-1 focus:outline-none"
               >
                 <option value="general">Guideline</option>
                 <option value="lab_report">Lab Report</option>
               </select>
             </div>
 
-            <label className="flex flex-col items-center justify-center border border-dashed border-slate-800 hover:border-teal-500/50 bg-slate-900/40 hover:bg-slate-900/80 transition-all rounded-xl p-3 cursor-pointer text-center group">
-              <UploadCloud className="h-5 w-5 text-slate-500 group-hover:text-teal-400 mb-1 transition-colors" />
-              <span className="text-xs font-semibold text-slate-300">
-                Upload {uploadType === 'lab_report' ? 'Lab Report Scan' : 'Clinical Guideline'}
+            <label className="upload-zone flex flex-col items-center justify-center p-4 text-center group">
+              <UploadCloud className="h-5 w-5 text-[#4a637a] group-hover:text-teal-400 mb-1.5 transition-colors" />
+              <span className="text-xs font-semibold text-[#8fa3bb] group-hover:text-white transition-colors">
+                {isUploading ? 'Uploading & Indexing...' : `Upload ${uploadType === 'lab_report' ? 'Lab Report' : 'Clinical Guideline'}`}
               </span>
-              <span className="text-[10px] text-slate-500 mt-0.5">PDF, DOCX, PNG, JPG (Max 20MB)</span>
+              <span className="text-[10px] text-[#4a637a] mt-0.5">PDF, DOCX, PNG, JPG (Max 20MB)</span>
               <input
                 type="file"
                 className="hidden"
@@ -210,17 +249,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               />
             </label>
 
+            {/* Upload Progress */}
             {isUploading && (
-              <div className="absolute inset-0 bg-slate-950/90 rounded-xl flex flex-col items-center justify-center gap-2 z-10">
-                <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent animate-spin rounded-full" />
-                <span className="text-[10px] font-semibold text-teal-300">Indexing in pgvector...</span>
+              <div className="space-y-1.5">
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-teal-400 text-center font-medium">
+                  Compressing → Embedding → Indexing in pgvector...
+                </p>
               </div>
             )}
 
             {uploadError && (
-              <div className="p-2 rounded-lg bg-red-950/40 border border-red-500/20 text-red-200 text-[10px] flex items-center justify-between">
+              <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/20 text-red-300 text-[10px] flex items-center justify-between">
                 <span>{uploadError}</span>
-                <button onClick={() => setUploadError(null)} className="text-red-400 ml-1">
+                <button onClick={() => setUploadError(null)} className="text-red-400 ml-1 hover:text-red-300">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -228,108 +275,65 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </div>
 
-        {/* Primary Navigation Tabs */}
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          
-          {/* Main Clinical Features */}
+
+          {/* Clinical Features */}
           <div className="space-y-1">
-            <span className="px-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-2">
-              Clinical Workflows
-            </span>
-
-            {/* Feature 1: Clinical Copilot */}
-            <button
-              onClick={() => setActiveTab('copilot')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'copilot'
-                  ? 'bg-teal-600/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-900'
-              }`}
-            >
-              <Activity className={`h-4 w-4 shrink-0 ${activeTab === 'copilot' ? 'text-teal-400' : 'text-slate-400'}`} />
-              <div className="text-left truncate">
-                <p className="truncate font-bold">OPD Clinical Copilot</p>
-                <p className="text-[10px] text-slate-500 font-normal">Sub-10s DD & Treatment</p>
-              </div>
-            </button>
-
-            {/* Feature 2: Textbook Patient Reports */}
-            <button
-              onClick={() => setActiveTab('patient_reports')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'patient_reports'
-                  ? 'bg-teal-600/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-900'
-              }`}
-            >
-              <FileText className={`h-4 w-4 shrink-0 ${activeTab === 'patient_reports' ? 'text-blue-400' : 'text-slate-400'}`} />
-              <div className="text-left truncate">
-                <p className="truncate font-bold">Textbook Patient Reports</p>
-                <p className="text-[10px] text-slate-500 font-normal">RAG literature grounded</p>
-              </div>
-            </button>
-
-            {/* Feature 3: Lab Report Analyzer */}
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'reports'
-                  ? 'bg-teal-600/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-900'
-              }`}
-            >
-              <FileSearch className={`h-4 w-4 shrink-0 ${activeTab === 'reports' ? 'text-cyan-400' : 'text-slate-400'}`} />
-              <div className="text-left truncate">
-                <p className="truncate font-bold">OCR Lab Report Analyzer</p>
-                <p className="text-[10px] text-slate-500 font-normal">Blood tests & pathology</p>
-              </div>
-            </button>
-
-            {/* Feature 3: Dedicated Document Library */}
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'documents'
-                  ? 'bg-teal-600/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-900'
-              }`}
-            >
-              <BookOpen className={`h-4 w-4 shrink-0 ${activeTab === 'documents' ? 'text-emerald-400' : 'text-slate-400'}`} />
-              <div className="text-left truncate">
-                <p className="truncate font-bold">Document & Vector Library</p>
-                <p className="text-[10px] text-slate-500 font-normal">{documents.length} files in pgvector</p>
-              </div>
-            </button>
+            <span className="section-label px-2 block mb-2">Clinical Workflows</span>
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`nav-item w-full ${isActive ? `active ${item.activeClass}` : ''}`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? item.accent : 'text-[#4a637a]'}`} />
+                  <div className="text-left truncate min-w-0">
+                    <p className="truncate text-xs font-semibold">{item.label}</p>
+                    {item.sub && (
+                      <p className="text-[10px] text-[#4a637a] font-normal truncate">
+                        {item.id === 'documents' ? `${documents.length} files in pgvector` : item.sub}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Conversations / Medical Chat History */}
-          <div className="space-y-2 pt-2 border-t border-slate-900">
-            <h3 className="px-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 flex items-center justify-between">
-              <span>Medical Q&A History</span>
+          {/* Chat History */}
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between px-2">
+              <span className="section-label">Medical Q&A History</span>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleStartGlobalChat}
-                  className="px-2 py-0.5 hover:bg-slate-900 rounded text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-500/40 transition-all flex items-center gap-0.5 normal-case font-bold text-[9px]"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/40 hover:bg-teal-500/5 transition-all"
                   title="Chat with entire medical library"
                 >
                   <Plus className="h-3 w-3" />
-                  <span>Library</span>
+                  Library
                 </button>
-                <span className="bg-slate-900 px-1.5 py-0.5 rounded text-slate-400 text-[9px]">{chats.length}</span>
+                <span className="text-[10px] text-[#4a637a] font-mono">{chats.length}</span>
               </div>
-            </h3>
+            </div>
 
             {chats.length === 0 ? (
-              <p className="px-2 py-3 text-xs text-slate-600 text-center">No active Q&A sessions.</p>
+              <p className="px-2 py-3 text-xs text-[#4a637a] text-center">No active Q&A sessions yet.</p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {chats.map((ch) => {
                   const isActive = activeChat?._id === ch._id && activeTab === 'chat';
                   return (
                     <div
                       key={ch._id}
-                      className={`group flex items-center justify-between px-2.5 py-2 rounded-xl transition-all ${
-                        isActive ? 'bg-teal-600/10 text-white border border-teal-500/30' : 'hover:bg-slate-900/50 text-slate-300'
+                      className={`group flex items-center justify-between px-2.5 py-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-teal-500/8 text-white border border-teal-500/20'
+                          : 'hover:bg-white/4 text-[#8fa3bb]'
                       }`}
                     >
                       {editingChatId === ch._id ? (
@@ -338,48 +342,44 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             type="text"
                             value={editingChatTitle}
                             onChange={(e) => setEditingChatTitle(e.target.value)}
-                            className="flex-1 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-xs text-white"
+                            className="input-field flex-1 px-2 py-1 text-xs"
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveChatRename(ch._id); }}
+                            autoFocus
                           />
-                          <button onClick={() => handleSaveChatRename(ch._id)} className="text-emerald-400 shrink-0">
+                          <button onClick={() => handleSaveChatRename(ch._id)} className="text-teal-400 shrink-0 p-1">
                             <Check className="h-3.5 w-3.5" />
                           </button>
-                          <button onClick={() => setEditingChatId(null)} className="text-slate-400 shrink-0">
+                          <button onClick={() => setEditingChatId(null)} className="text-[#4a637a] shrink-0 p-1">
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       ) : (
                         <>
                           <button
-                            onClick={() => {
-                              onSelectChat(ch);
-                              setActiveTab('chat');
-                            }}
-                            className="flex items-center gap-2 truncate text-left flex-1"
+                            onClick={() => { onSelectChat(ch); setActiveTab('chat'); }}
+                            className="flex items-center gap-2.5 truncate text-left flex-1 min-w-0"
                           >
-                            <MessageSquare className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-teal-400" />
-                            <div className="truncate text-xs font-medium">
-                              <p className="truncate font-bold">{ch.title}</p>
-                              <p className="text-[10px] text-slate-500 truncate">
-                                Source: {ch.document?.filename || 'All Documents (Global Library)'}
+                            <div className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-teal-500/15' : 'bg-white/5'}`}>
+                              <MessageSquare className={`h-3 w-3 ${isActive ? 'text-teal-400' : 'text-[#4a637a]'}`} />
+                            </div>
+                            <div className="truncate min-w-0">
+                              <p className="truncate text-xs font-semibold text-white">{ch.title}</p>
+                              <p className="text-[10px] text-[#4a637a] truncate">
+                                {ch.document?.filename || 'Global Library'}
                               </p>
                             </div>
                           </button>
 
-                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 shrink-0 ml-1">
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 ml-1 transition-opacity">
                             <button
-                              onClick={() => {
-                                setEditingChatId(ch._id);
-                                setEditingChatTitle(ch.title);
-                              }}
-                              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                              title="Rename Session"
+                              onClick={() => { setEditingChatId(ch._id); setEditingChatTitle(ch.title); }}
+                              className="p-1.5 hover:bg-white/8 rounded-lg text-[#4a637a] hover:text-white transition-colors"
                             >
                               <Edit2 className="h-3 w-3" />
                             </button>
                             <button
                               onClick={() => onDeleteChat(ch._id)}
-                              className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-red-400"
-                              title="Delete Session"
+                              className="p-1.5 hover:bg-red-500/10 rounded-lg text-[#4a637a] hover:text-red-400 transition-colors"
                             >
                               <Trash2 className="h-3 w-3" />
                             </button>
@@ -394,61 +394,67 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </div>
 
-        {/* Footer Doctor Profile */}
-        <div className="p-4 border-t border-slate-900 bg-slate-950 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 truncate">
-            <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 text-teal-400">
-              <UserIcon className="h-4.5 w-4.5" />
+        {/* Doctor Profile Footer */}
+        <div className="p-4 border-t border-white/5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-teal-600/30 to-teal-800/30 border border-teal-500/20 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-teal-400">
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </span>
+              </div>
+              <div className="truncate min-w-0">
+                <p className="text-xs font-bold text-white truncate">Dr. {user?.firstName} {user?.lastName}</p>
+                <p className="text-[10px] text-[#4a637a] truncate">{user?.email}</p>
+              </div>
             </div>
-            <div className="truncate">
-              <p className="text-xs font-bold text-white truncate">
-                Dr. {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
-            </div>
+            <button
+              onClick={logout}
+              className="p-2 text-[#4a637a] hover:text-red-400 rounded-lg hover:bg-red-500/8 transition-colors shrink-0"
+              title="Log Out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
-
-          <button
-            onClick={logout}
-            className="p-2 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-900 transition-colors shrink-0"
-            title="Log Out"
-          >
-            <LogOut className="h-4.5 w-4.5" />
-          </button>
         </div>
       </aside>
 
-      {/* MAIN CONTAINER */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 p-5">
-        {children}
+      {/* ─── MAIN CONTENT ────────────────────────────────────── */}
+      <main className="flex-1 flex flex-col overflow-hidden bg-[#030912]">
+        {/* Subtle top accent line */}
+        <div className="h-px bg-gradient-to-r from-transparent via-teal-500/20 to-transparent shrink-0" />
+        <div className="flex-1 overflow-hidden p-5">
+          {children}
+        </div>
       </main>
 
-      {/* DOCTOR PROFILE SETTINGS MODAL */}
+      {/* ─── PROFILE MODAL ───────────────────────────────────── */}
       {isProfileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="glass-panel-glow w-full max-w-md rounded-3xl overflow-hidden p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="glass-elevated w-full max-w-md rounded-3xl p-7 relative fade-in-up">
             <button
               onClick={() => setIsProfileOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg transition-colors"
+              className="absolute top-4 right-4 text-[#4a637a] hover:text-white p-2 hover:bg-white/5 rounded-xl transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2 mb-6">
-              <div className="h-8 w-8 rounded-lg bg-teal-500/10 flex items-center justify-center border border-teal-500/20 text-teal-400">
+            <div className="flex items-center gap-3 mb-7">
+              <div className="icon-container icon-teal h-9 w-9">
                 <Settings className="h-4 w-4" />
               </div>
-              <h3 className="text-base font-bold text-white">Doctor Profile Settings</h3>
+              <div>
+                <h3 className="text-base font-bold text-white">Doctor Profile Settings</h3>
+                <p className="text-[11px] text-[#4a637a]">Update your account information</p>
+              </div>
             </div>
 
             {profileMsg && (
-              <div
-                className={`p-3 rounded-xl text-xs mb-4 border ${
-                  profileMsg.type === 'success'
-                    ? 'bg-emerald-950/40 border-emerald-500/20 text-emerald-200'
-                    : 'bg-red-950/40 border-red-500/20 text-red-200'
-                }`}
-              >
+              <div className={`p-3 rounded-xl text-xs mb-5 border ${
+                profileMsg.type === 'success'
+                  ? 'bg-emerald-950/40 border-emerald-500/20 text-emerald-300'
+                  : 'bg-red-950/40 border-red-500/20 text-red-300'
+              }`}>
                 {profileMsg.text}
               </div>
             )}
@@ -456,46 +462,39 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <form onSubmit={handleUpdateProfileSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                    First Name
-                  </label>
+                  <label className="block section-label mb-2">First Name</label>
                   <input
                     type="text"
                     value={profileFirst}
                     onChange={(e) => setProfileFirst(e.target.value)}
-                    className="block w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    className="input-field px-3 py-2.5 text-sm"
                     required
                   />
                 </div>
-
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Last Name
-                  </label>
+                  <label className="block section-label mb-2">Last Name</label>
                   <input
                     type="text"
                     value={profileLast}
                     onChange={(e) => setProfileLast(e.target.value)}
-                    className="block w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    className="input-field px-3 py-2.5 text-sm"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Update Password (optional)
-                </label>
+                <label className="block section-label mb-2">New Password (optional)</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#4a637a]">
                     <Key className="h-4 w-4" />
                   </div>
                   <input
                     type="password"
                     value={profilePass}
                     onChange={(e) => setProfilePass(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    placeholder="Enter new password"
+                    className="input-field pl-10 pr-4 py-2.5 text-sm"
+                    placeholder="Leave blank to keep current"
                   />
                 </div>
               </div>
@@ -503,9 +502,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <button
                 type="submit"
                 disabled={profileSubmitting}
-                className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-teal-400/20 transition-all shadow-md"
+                className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 mt-2"
               >
-                {profileSubmitting ? 'Updating...' : 'Save Settings'}
+                {profileSubmitting ? (
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full spin" />
+                ) : 'Save Profile Settings'}
               </button>
             </form>
           </div>
