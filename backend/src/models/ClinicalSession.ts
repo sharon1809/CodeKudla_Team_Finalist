@@ -33,7 +33,7 @@ const treatmentSchema = new Schema({
 const safetyFlagSchema = new Schema({
   type: {
     type: String,
-    enum: ['drug_interaction', 'allergy', 'renal_caution', 'hepatic_caution', 'pregnancy', 'pediatric', 'elderly'],
+    enum: ['drug_interaction', 'allergy', 'renal_caution', 'hepatic_caution', 'pregnancy', 'pediatric', 'elderly', 'informational', 'other'],
     required: true,
   },
   severity: {
@@ -55,7 +55,7 @@ const clinicalSessionSchema = new Schema<IClinicalSession>(
     input: {
       chiefComplaint: { type: String, required: true },
       symptoms: [String],
-      age: { type: Number, required: true },
+      age: { type: Number, required: false },
       gender: { type: String, enum: ['male', 'female', 'other'], required: true },
       vitals: vitalSchema,
       history: String,

@@ -26,6 +26,8 @@ import {
   MicOff,
   Download,
   MessageSquareQuote,
+  History,
+  Clock,
 } from 'lucide-react';
 
 interface DifferentialDiagnosis {
@@ -143,11 +145,37 @@ export const ClinicalCopilot: React.FC = () => {
   const finalRef = useRef<string>('');
   const interimRef = useRef<string>('');
 
-  // ── Output & UI States ──
   const [output, setOutput] = useState<ClinicalOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  // History States
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const res = await api.get('/clinical/sessions');
+      setSessions(res.data.sessions || []);
+    } catch (err) {
+      console.error('Failed to load sessions', err);
+    }
+  };
+
+  const loadSession = (session: any) => {
+    setAge(session.input.age);
+    setGender(session.input.gender);
+    setChiefComplaint(session.input.chiefComplaint);
+    setSymptoms(session.input.symptoms || []);
+    setAmbientTranscript('');
+    setOutput(session.output);
+    setShowHistory(false);
+  };
 
   // Initialize Web Speech API
   useEffect(() => {
@@ -270,7 +298,7 @@ export const ClinicalCopilot: React.FC = () => {
         setAmbientTranscript(fullText);
         setInterimTranscript('');
         
-        handleMockAnalyze(); 
+        await handleAnalyze(fullText); 
       } catch (err) {
         // Fallback to the browser's buggy text if Whisper API fails
         let fullText = baseTranscriptRef.current;
@@ -279,7 +307,7 @@ export const ClinicalCopilot: React.FC = () => {
         
         setAmbientTranscript(fullText);
         setInterimTranscript('');
-        handleMockAnalyze();
+        await handleAnalyze(fullText);
       } finally {
         setIsWhisperProcessing(false);
       }
@@ -321,9 +349,10 @@ export const ClinicalCopilot: React.FC = () => {
   };
   const removeSymptom = (i: number) => setSymptoms(symptoms.filter((_, idx) => idx !== i));
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (transcriptOverride?: string) => {
     // If using manual form
-    if (!chiefComplaint.trim() && !ambientTranscript.trim()) { 
+    const finalComplaint = transcriptOverride || ambientTranscript || chiefComplaint;
+    if (!finalComplaint.trim()) { 
       setError('Please provide a Chief Complaint or use Voice Dictation.'); 
       return; 
     }
@@ -333,12 +362,13 @@ export const ClinicalCopilot: React.FC = () => {
 
     try {
       const res = await api.post('/clinical/analyze', {
-        chiefComplaint: ambientTranscript || chiefComplaint,
+        chiefComplaint: finalComplaint,
         symptoms,
         age: Number(age) || undefined,
         gender,
       });
       setOutput(res.data.output);
+      fetchSessions(); // refresh history
     } catch (err: any) {
       setError(err.response?.data?.message || 'Real API failed. Try using Mock Analysis for demo.');
     } finally {
@@ -377,26 +407,20 @@ export const ClinicalCopilot: React.FC = () => {
     if (isListening) recognitionRef.current?.stop();
   };
 
-  
   const [isExporting, setIsExporting] = useState(false);
   const handleExportPdf = async () => {
-    const element = document.getElementById('clinical-matrix-pdf');
-    if (!element) return;
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save('MedSynexa-Clinical-Matrix.pdf');
+      // html2canvas fails on modern css colors (lab). 
+      // Using native window print is 100% reliable.
+      window.print();
     } catch (err) {
-      console.error('PDF Export Error:', err);
+      console.error('Print failed', err);
     } finally {
       setIsExporting(false);
     }
   };
+
   const handleCopyPrescription = () => {
     if (!output) return;
     let text = `MEDSYNEXA CLINICAL DECISION SUMMARY\n`;
@@ -416,8 +440,53 @@ export const ClinicalCopilot: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#F8FAFC]">
-      <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col overflow-y-auto">
+    <div className="h-full flex relative overflow-hidden bg-[#F8FAFC]">
+      {/* HISTORY SIDEBAR */}
+      {showHistory && (
+        <div className="w-80 bg-white border-r border-[#E2E8F0] shadow-xl z-30 flex flex-col h-full absolute left-0 top-0">
+          <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between bg-teal-50">
+            <h3 className="font-bold text-teal-800 flex items-center gap-2">
+              <History className="h-4 w-4" /> Past Sessions
+            </h3>
+            <button onClick={() => setShowHistory(false)} className="text-teal-600 hover:bg-teal-100 p-1.5 rounded-lg transition">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {sessions.length === 0 ? (
+              <p className="text-sm text-center text-[#94A3B8] mt-10">No past sessions found.</p>
+            ) : (
+              sessions.map((sess) => (
+                <button
+                  key={sess._id}
+                  onClick={() => loadSession(sess)}
+                  className="w-full text-left p-3 rounded-xl hover:bg-[#F1F5F9] transition-colors border border-transparent hover:border-[#E2E8F0]"
+                >
+                  <p className="font-semibold text-[#0F172A] text-sm truncate">{sess.input.chiefComplaint}</p>
+                  <div className="flex items-center justify-between mt-1 text-[11px] font-medium text-[#64748B]">
+                    <span>{sess.input.age}yo {sess.input.gender}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(sess.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTENT */}
+      <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col overflow-y-auto relative">
+
+        {/* History Toggle Button */}
+        {!showHistory && (
+          <button 
+            onClick={() => setShowHistory(true)}
+            className="absolute top-4 left-4 z-20 bg-white border border-[#E2E8F0] shadow-sm rounded-xl p-2.5 text-[#64748B] hover:text-teal-600 hover:border-teal-200 transition-colors"
+            title="View Past Sessions"
+          >
+            <History className="h-5 w-5" />
+          </button>
+        )}
 
         {/* ─── LIVE TRANSCRIPT / LISTENING STATE ─── */}
         {(isListening || ambientTranscript) && !output && !isLoading && (

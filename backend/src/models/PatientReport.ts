@@ -16,7 +16,7 @@ const patientReportSchema = new Schema<IPatientReport>(
     documentId: {
       type: Schema.Types.ObjectId,
       ref: 'Document',
-      required: true,
+      required: false,
     },
     condition: {
       type: String,

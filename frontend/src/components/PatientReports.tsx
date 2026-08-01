@@ -172,6 +172,7 @@ export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => 
                       className="input-field pl-9 pr-3 py-2.5 text-sm appearance-none"
                     >
                       <option value="" disabled>Select textbook…</option>
+                      <option value="all">Global Library (All Textbooks)</option>
                       {textbooks.map(doc => (
                         <option key={doc._id} value={doc._id}>{doc.filename}</option>
                       ))}
@@ -182,10 +183,12 @@ export const PatientReports: React.FC<PatientReportsProps> = ({ documents }) => 
               </div>
 
               {/* Selected textbook pill */}
-              {selectedBook && (
+              {(selectedBook || documentId === 'all') && (
                 <div className="flex items-center gap-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-lg">
                   <FileText className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                  <span className="text-[11px] text-indigo-700 font-medium truncate">{selectedBook.filename}</span>
+                  <span className="text-[11px] text-indigo-700 font-medium truncate">
+                    {documentId === 'all' ? 'Global Library (All Textbooks)' : selectedBook?.filename}
+                  </span>
                 </div>
               )}
 

@@ -3,7 +3,8 @@ import { Document } from '../models/Document';
 import { PatientReport } from '../models/PatientReport';
 import { Patient } from '../models/Patient';
 import { queryDocumentChunks } from '../services/pgvectorService';
-import { getQueryEmbedding, runPatientReportChain } from '../services/langchainService';
+import { getQueryEmbedding } from '../services/langchainService';
+import { runPatientReportChain } from '../services/llm/opdChain';
 
 /**
  * Generate a Patient Report based on a textbook and a specific condition
@@ -23,11 +24,14 @@ export const generatePatientReport = async (req: Request, res: Response): Promis
       return;
     }
 
-    // Check if textbook exists
-    const document = await Document.findOne({ _id: documentId, owner: doctorId });
-    if (!document) {
-      res.status(404).json({ message: 'Textbook not found or access denied.' });
-      return;
+    // Check if textbook exists (unless it's a global search)
+    let document = null;
+    if (documentId !== 'all') {
+      document = await Document.findOne({ _id: documentId, owner: doctorId });
+      if (!document) {
+        res.status(404).json({ message: 'Textbook not found or access denied.' });
+        return;
+      }
     }
 
     // Check if patient exists
@@ -37,17 +41,18 @@ export const generatePatientReport = async (req: Request, res: Response): Promis
       return;
     }
 
-    console.log(`🩺 Generating Patient Report for condition: "${condition}" using textbook: ${document.filename}`);
+    console.log(`🩺 Generating Patient Report for condition: "${condition}" using textbook: ${documentId === 'all' ? 'All Textbooks' : document?.filename}`);
 
     // Generate query embedding focused on finding causes, cures, and lifestyle management for the condition
     const queryText = `causes, cures, treatment, management, diet, lifestyle for ${condition}`;
     const queryEmbedding = await getQueryEmbedding(queryText);
 
     // Retrieve chunks specifically from the single textbook (topK = 10 for comprehensive coverage)
-    const matches = await queryDocumentChunks(doctorId, queryEmbedding, 10, {
-      documentId,
-      queryText
-    });
+    // If 'all', omit documentId filter
+    const searchOptions: any = { queryText };
+    if (documentId !== 'all') searchOptions.documentId = documentId;
+
+    const matches = await queryDocumentChunks(doctorId, queryEmbedding, 15, searchOptions);
 
     if (!matches || matches.length === 0) {
       res.status(400).json({ message: 'No relevant information found in the specified textbook for this condition.' });
@@ -61,7 +66,7 @@ export const generatePatientReport = async (req: Request, res: Response): Promis
     const patientReport = new PatientReport({
       patientId,
       doctorId,
-      documentId,
+      documentId: documentId === 'all' ? null : documentId,
       condition,
       causes: reportOutput.causes,
       cures: reportOutput.cures,

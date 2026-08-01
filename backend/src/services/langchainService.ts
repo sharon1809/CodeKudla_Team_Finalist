@@ -93,6 +93,7 @@ const getLLMModel = (temperature = 0.2): any => {
       },
       model: process.env.OPENROUTER_CHAT_MODEL || 'google/gemini-2.5-flash',
       temperature,
+      maxTokens: 4096,
       maxRetries: 0, // Disable automatic retries on rate limit (429) errors
     });
   }
@@ -118,6 +119,7 @@ const getLLMModel = (temperature = 0.2): any => {
       },
       model: process.env.OPENROUTER_CHAT_MODEL || 'google/gemini-2.5-flash',
       temperature,
+      maxTokens: 4096,
       maxRetries: 0,
     });
   }
@@ -293,7 +295,7 @@ const TreatmentOptionSchema = z.object({
 });
 
 const SafetyFlagSchema = z.object({
-  type: z.enum(['drug_interaction', 'allergy', 'renal_caution', 'hepatic_caution', 'pregnancy', 'pediatric', 'elderly']),
+  type: z.enum(['drug_interaction', 'allergy', 'renal_caution', 'hepatic_caution', 'pregnancy', 'pediatric', 'elderly', 'informational', 'other']),
   severity: z.enum(['critical', 'moderate', 'informational']),
   message: z.string().describe('Detailed safety message'),
   drugs: z.array(z.string()).optional().describe('Drugs involved in interaction if applicable'),
@@ -311,17 +313,20 @@ const ClinicalOutputSchema = z.object({
 
 export type ClinicalOutputType = z.infer<typeof ClinicalOutputSchema>;
 
-export const runClinicalCopilotChain = async (input: {
-  chiefComplaint: string;
-  symptoms: string[];
-  age: number;
-  gender: string;
-  vitals?: Record<string, any>;
-  history?: string;
-  allergies?: string[];
-  currentMedications?: string[];
-  duration?: string;
-}): Promise<ClinicalOutputType> => {
+export const runClinicalCopilotChain = async (
+  input: {
+    chiefComplaint: string;
+    symptoms: string[];
+    age: number;
+    gender: string;
+    vitals?: Record<string, any>;
+    history?: string;
+    allergies?: string[];
+    currentMedications?: string[];
+    duration?: string;
+  },
+  contextChunks?: VectorMatch[]
+): Promise<ClinicalOutputType> => {
   const llm = getLLMModel(0.15);
   const parser: any = (StructuredOutputParser as any).fromZodSchema(ClinicalOutputSchema);
 
@@ -344,7 +349,14 @@ export const runClinicalCopilotChain = async (input: {
     ? input.currentMedications.join(', ')
     : 'None';
 
+  const contextText = contextChunks && contextChunks.length > 0 
+    ? contextChunks.map((c, i) => `[Source ${i + 1}] (${c.filename}):\n"${c.content}"`).join('\n\n')
+    : 'No relevant context found from uploaded textbooks.';
+
   const systemPrompt = `You are MedSynexa, an expert AI clinical decision-support system designed for Indian Outpatient Departments (OPDs). You follow ICMR (Indian Council of Medical Research) and NHP (National Health Portal) guidelines.
+
+CONTEXT SOURCES (FROM UPLOADED MEDICAL TEXTBOOKS):
+${contextText}
 
 PATIENT PRESENTATION:
 - Age: ${input.age} years | Gender: ${input.gender}
@@ -357,16 +369,17 @@ PATIENT PRESENTATION:
 - Current Medications: ${currentMedsText}
 
 YOUR ROLE:
-1. Provide a RANKED differential diagnosis list (most likely first) with ICD-10 codes
-2. Suggest specific diagnostic investigations in priority order
+1. Provide a RANKED differential diagnosis list (most likely first) with ICD-10 codes. ALWAYS base your diagnoses and reasoning primarily on the CONTEXT SOURCES provided above.
+2. Suggest specific diagnostic investigations in priority order.
 3. Recommend evidence-based treatment using:
    - Indian generic drug names (with common Indian brand names like Crocin, Azithral, Augmentin, etc.)
    - Appropriate dosages for Indian patient population
    - Duration aligned with Indian standard of care
-4. Flag ALL safety concerns: drug interactions, allergy risks, renal/hepatic dosing needs, age-specific cautions
-5. Add a clinical pearl if relevant
+4. Flag ALL safety concerns: drug interactions, allergy risks, renal/hepatic dosing needs, age-specific cautions.
+5. Add a clinical pearl if relevant.
 
 CRITICAL RULES:
+- If CONTEXT SOURCES are provided, prioritize that information over your general knowledge.
 - Use Indian pharmaceutical brands (Cipla, Sun Pharma, Abbott India, Mankind, etc.)
 - Follow ICMR/NHP/Indian formulary guidelines
 - Always check for drug-drug interactions given current medications
