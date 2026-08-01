@@ -3,8 +3,13 @@ import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
+import dns from 'dns';
+
 // ─── MongoDB Connection ───────────────────────────────────────────────────────
 export const connectMongoDB = async (): Promise<void> => {
+  // Fix for "ECONNREFUSED querySrv" caused by ISP/Windows DNS blocking
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+  
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/medsynexa_db';
   await mongoose.connect(uri);
   console.log('✅ MongoDB connected:', uri);

@@ -32,7 +32,7 @@ const documentSchema = new Schema<IDocument>(
     },
     documentType: {
       type: String,
-      enum: ['general', 'lab_report'],
+      enum: ['general', 'lab_report', 'textbook'],
       default: 'general',
     },
     processingStatus: {

@@ -8,8 +8,7 @@ dotenv.config();
 import authRoutes from './routes/authRoutes';
 import documentRoutes from './routes/documentRoutes';
 import chatRoutes from './routes/chatRoutes';
-import clinicalRoutes from './routes/clinicalRoutes';
-import reportRoutes from './routes/reportRoutes';
+import opdRoutes from './routes/opdRoutes';
 
 const app = express();
 
@@ -55,8 +54,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/chats', chatRoutes);
-app.use('/api/clinical', clinicalRoutes);
-app.use('/api/reports', reportRoutes);
+app.use('/api/opd', opdRoutes);
 
 // Global 404 Route handler
 app.use((req: Request, res: Response) => {

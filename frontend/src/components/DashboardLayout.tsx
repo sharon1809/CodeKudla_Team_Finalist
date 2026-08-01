@@ -52,8 +52,8 @@ interface DashboardLayoutProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
-  activeTab: 'copilot' | 'reports' | 'documents' | 'chat';
-  setActiveTab: (tab: 'copilot' | 'reports' | 'documents' | 'chat') => void;
+  activeTab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat';
+  setActiveTab: (tab: 'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat') => void;
   activeChat: Chat | null;
   onNewChatCreated?: () => void;
   children: React.ReactNode;
@@ -253,7 +253,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               </div>
             </button>
 
-            {/* Feature 2: Lab Report Analyzer */}
+            {/* Feature 2: Textbook Patient Reports */}
+            <button
+              onClick={() => setActiveTab('patient_reports')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === 'patient_reports'
+                  ? 'bg-teal-600/20 text-teal-300 border border-teal-500/40 shadow-sm'
+                  : 'text-slate-300 hover:bg-slate-900'
+              }`}
+            >
+              <FileText className={`h-4 w-4 shrink-0 ${activeTab === 'patient_reports' ? 'text-blue-400' : 'text-slate-400'}`} />
+              <div className="text-left truncate">
+                <p className="truncate font-bold">Textbook Patient Reports</p>
+                <p className="text-[10px] text-slate-500 font-normal">RAG literature grounded</p>
+              </div>
+            </button>
+
+            {/* Feature 3: Lab Report Analyzer */}
             <button
               onClick={() => setActiveTab('reports')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${

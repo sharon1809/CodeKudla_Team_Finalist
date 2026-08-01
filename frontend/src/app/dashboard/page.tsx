@@ -9,6 +9,7 @@ import { ClinicalCopilot } from '../../components/ClinicalCopilot';
 import { LabReportAnalyzer } from '../../components/LabReportAnalyzer';
 import { DocumentsList } from '../../components/DocumentsList';
 import { ChatInterface } from '../../components/ChatInterface';
+import { PatientReports } from '../../components/PatientReports';
 
 interface DocumentItem {
   _id: string;
@@ -25,7 +26,7 @@ export default function DashboardPage() {
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'copilot' | 'reports' | 'documents' | 'chat'>('copilot');
+  const [activeTab, setActiveTab] = useState<'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat'>('copilot');
   
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
   const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
@@ -155,6 +156,7 @@ export default function DashboardPage() {
       {/* Dynamic Tab Render */}
       {activeTab === 'copilot' && <ClinicalCopilot />}
       {activeTab === 'reports' && <LabReportAnalyzer />}
+      {activeTab === 'patient_reports' && <PatientReports documents={documents} />}
       {activeTab === 'documents' && (
         <DocumentsList
           onStartChatWithDoc={async (doc) => {

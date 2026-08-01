@@ -19,7 +19,7 @@ export interface IRefreshToken extends MongoDocument {
 }
 
 // ─── Document Types ───────────────────────────────────────────────────────────
-export type DocumentType = 'general' | 'lab_report';
+export type DocumentType = 'general' | 'lab_report' | 'textbook';
 
 export interface IDocument extends MongoDocument {
   filename: string;
@@ -140,6 +140,37 @@ export interface IReportAnalysis extends MongoDocument {
   suggestedFollowUp: string[];
   urgencyLevel: 'routine' | 'urgent' | 'critical';
   createdAt: Date;
+}
+
+// ─── Patient & OPD Types ──────────────────────────────────────────────────────
+export interface IPatient extends MongoDocument {
+  name: string;
+  age: number;
+  gender: 'male' | 'female' | 'other';
+  contactNumber?: string;
+  doctorId: Types.ObjectId;
+  medicalHistory?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IPatientReport extends MongoDocument {
+  patientId: Types.ObjectId;
+  doctorId: Types.ObjectId;
+  documentId: Types.ObjectId;
+  condition: string;
+  causes: string;
+  cures: string;
+  dietAndLifestyle: string;
+  simpleSummary: string;
+  createdAt: Date;
+}
+
+export interface IPatientReportOutput {
+  causes: string;
+  cures: string;
+  dietAndLifestyle: string;
+  simpleSummary: string;
 }
 
 // ─── pgvector Query Result ────────────────────────────────────────────────────
