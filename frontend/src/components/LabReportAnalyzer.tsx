@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import {
-  FileSearch,
+  FlaskConical,
   UploadCloud,
   FileText,
   AlertTriangle,
   CheckCircle,
-  Clock,
   Sparkles,
   ArrowRight,
   TrendingUp,
@@ -45,16 +44,28 @@ interface DocumentItem {
   uploadDate: string;
 }
 
+const STATUS_CONFIG = {
+  normal:       { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  badge: 'badge-green',  icon: CheckCircle, label: 'Normal' },
+  abnormal_high:{ bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  badge: 'badge-amber',  icon: TrendingUp,  label: 'High'   },
+  abnormal_low: { bg: 'bg-cyan-50',   border: 'border-cyan-200',   text: 'text-cyan-700',   badge: 'badge-cyan',   icon: TrendingDown,label: 'Low'    },
+  critical:     { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    badge: 'badge-red',    icon: AlertTriangle,label: 'Critical'},
+};
+
+const URGENCY_CONFIG = {
+  routine:  { badge: 'badge-green',  label: 'Routine Urgency'  },
+  urgent:   { badge: 'badge-amber',  label: 'Urgent'           },
+  critical: { badge: 'badge-red',    label: 'Critical Urgency' },
+};
+
 export const LabReportAnalyzer: React.FC = () => {
   const [labDocuments, setLabDocuments] = useState<DocumentItem[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
   const [analysis, setAnalysis] = useState<ReportAnalysis | null>(null);
-  
+
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all lab report documents on mount
   useEffect(() => {
     fetchLabDocuments();
   }, []);
@@ -113,31 +124,36 @@ export const LabReportAnalyzer: React.FC = () => {
     runAnalysis(doc._id);
   };
 
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   return (
-    <div className="h-full flex flex-col overflow-hidden space-y-4">
-      {/* Top Banner */}
-      <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-2xl border border-teal-500/20 shrink-0">
+    <div className="h-full flex flex-col overflow-hidden gap-4">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] px-5 py-3.5 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-            <FileSearch className="h-5 w-5" />
+          <div className="icon-container icon-cyan h-10 w-10">
+            <FlaskConical className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-white tracking-tight">MedSynexa OCR Lab Report Analyzer</h2>
-              <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                Gemini Vision OCR + pgvector RAG
-              </span>
+              <h2 className="text-sm font-bold text-[#0F172A] tracking-tight">Lab Report Analyzer</h2>
+              <span className="badge badge-cyan text-[10px]">Gemini Vision OCR + pgvector</span>
             </div>
-            <p className="text-xs text-slate-400">
-              Extract blood test parameters, highlight abnormal values, and generate evidence-based clinical insights
+            <p className="text-xs text-[#64748B] mt-0.5">
+              Extract blood test parameters, highlight abnormal values, and generate clinical insights
             </p>
           </div>
         </div>
 
-        {/* Upload Button */}
-        <label className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-teal-600/20 border border-teal-400/20 cursor-pointer flex items-center gap-2 transition-all active:scale-[0.98]">
+        <label className="btn-primary px-4 py-2 text-xs cursor-pointer flex items-center gap-2 rounded-xl">
           <UploadCloud className="h-4 w-4" />
-          <span>Upload Lab Report (PDF/Image)</span>
+          <span>Upload Lab Report</span>
           <input
             type="file"
             className="hidden"
@@ -148,187 +164,178 @@ export const LabReportAnalyzer: React.FC = () => {
         </label>
       </div>
 
-      {/* Main Grid: Document List / Selector (Left) & Analysis Output (Right) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
-        
-        {/* Left Column: Lab Document Selector */}
-        <div className="lg:col-span-4 glass-panel p-5 rounded-3xl border-slate-800/80 overflow-y-auto flex flex-col space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <FileText className="h-4 w-4 text-teal-400" />
-              Uploaded Lab Reports ({labDocuments.length})
+      {/* ── Main Grid ── */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+
+        {/* ── Left: Document Selector ── */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-y-auto flex flex-col">
+          
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F1F5F9] shrink-0">
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#475569]">
+              <FileText className="h-3.5 w-3.5 text-cyan-600" />
+              Lab Reports ({labDocuments.length})
             </span>
+            <button
+              onClick={fetchLabDocuments}
+              className="p-1.5 hover:bg-[#F1F5F9] rounded-lg text-[#94A3B8] hover:text-[#475569] transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          {isUploading && (
-            <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-500/30 text-teal-200 text-xs flex items-center gap-3 animate-pulse">
-              <div className="h-4 w-4 border-2 border-teal-400 border-t-transparent animate-spin rounded-full shrink-0" />
-              <span>Indexing lab report via Gemini Vision OCR...</span>
-            </div>
-          )}
+          <div className="flex-1 p-3 overflow-y-auto">
+            {isUploading && (
+              <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs flex items-center gap-3 mb-3">
+                <div className="h-4 w-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>Indexing via Gemini Vision OCR…</span>
+              </div>
+            )}
 
-          {labDocuments.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-              <UploadCloud className="h-10 w-10 text-slate-600 animate-bounce" />
-              <p className="text-xs">No lab reports uploaded yet. Click above to upload a blood test, LFT, KFT, or CBC report.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 flex-1 overflow-y-auto">
-              {labDocuments.map((doc) => {
-                const isSelected = selectedDoc?._id === doc._id;
-                return (
-                  <button
-                    key={doc._id}
-                    onClick={() => handleSelectDoc(doc)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${
-                      isSelected
-                        ? 'bg-teal-500/10 border-teal-500/40 text-white shadow-md'
-                        : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <FileText className={`h-4 w-4 shrink-0 ${isSelected ? 'text-teal-400' : 'text-slate-500'}`} />
-                      <div className="truncate text-xs">
-                        <p className="font-semibold truncate">{doc.filename}</p>
-                        <p className="text-[10px] text-slate-500">
-                          Uploaded {new Date(doc.uploadDate).toLocaleDateString()}
-                        </p>
+            {labDocuments.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center">
+                  <UploadCloud className="h-6 w-6 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#0F172A]">No lab reports yet</p>
+                  <p className="text-xs text-[#94A3B8] mt-1">Upload a CBC, LFT, KFT, or Lipid Panel PDF/image above.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {labDocuments.map((doc) => {
+                  const isSelected = selectedDoc?._id === doc._id;
+                  return (
+                    <button
+                      key={doc._id}
+                      onClick={() => handleSelectDoc(doc)}
+                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group ${
+                        isSelected
+                          ? 'bg-cyan-50 border-cyan-200 shadow-sm'
+                          : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 truncate min-w-0">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-cyan-100' : 'bg-white border border-[#E2E8F0]'}`}>
+                          <FileText className={`h-4 w-4 ${isSelected ? 'text-cyan-600' : 'text-[#94A3B8]'}`} />
+                        </div>
+                        <div className="truncate min-w-0">
+                          <p className={`text-xs font-semibold truncate ${isSelected ? 'text-cyan-800' : 'text-[#0F172A]'}`}>{doc.filename}</p>
+                          <p className="text-[10px] text-[#94A3B8] mt-0.5">{formatDate(doc.uploadDate)} · {formatFileSize(doc.fileSize)}</p>
+                        </div>
                       </div>
-                    </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-teal-400 shrink-0 transition-transform group-hover:translate-x-1" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                      <ArrowRight className={`h-3.5 w-3.5 shrink-0 ml-2 transition-transform ${isSelected ? 'text-cyan-500' : 'text-[#CBD5E1] group-hover:text-[#94A3B8] group-hover:translate-x-0.5'}`} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right Column: Structured Findings & Clinical Interpretation */}
-        <div className="lg:col-span-8 flex flex-col space-y-4 overflow-y-auto">
-          
+        {/* ── Right: Analysis Output ── */}
+        <div className="lg:col-span-8 flex flex-col gap-4 overflow-y-auto">
+
           {!selectedDoc && !isAnalyzing && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 glass-panel rounded-3xl border-slate-800/80 space-y-4">
-              <FileSearch className="h-16 w-16 text-slate-700 animate-pulse" />
-              <div>
-                <h3 className="text-base font-bold text-white">Select or Upload a Lab Report</h3>
-                <p className="text-xs text-slate-400 max-w-sm mt-1">
-                  Upload a CBC, LFT, Lipid Panel, or Renal Function lab report to view automated parameter extractions and clinical interpretations.
-                </p>
+            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm">
+              <div className="h-16 w-16 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-400 mb-4">
+                <FlaskConical className="h-8 w-8" />
               </div>
+              <h3 className="text-base font-bold text-[#0F172A] mb-2">Select or Upload a Lab Report</h3>
+              <p className="text-sm text-[#64748B] max-w-sm leading-relaxed">
+                Upload a CBC, LFT, Lipid Panel, or Renal Function lab report to view automated parameter extractions and clinical interpretations.
+              </p>
             </div>
           )}
 
           {isAnalyzing && (
-            <div className="h-full flex flex-col items-center justify-center p-8 glass-panel rounded-3xl border-slate-800/80 space-y-4">
-              <div className="h-12 w-12 border-3 border-teal-500 border-t-transparent animate-spin rounded-full" />
-              <div className="text-center space-y-1">
-                <h4 className="text-sm font-bold text-white">Analyzing Lab Report via pgvector RAG</h4>
-                <p className="text-xs text-slate-400">Extracting parameters, checking reference ranges & clinical implications...</p>
+            <div className="h-full flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm gap-4">
+              <div className="h-12 w-12 border-[3px] border-cyan-500 border-t-transparent animate-spin rounded-full" />
+              <div className="text-center">
+                <h4 className="text-sm font-bold text-[#0F172A]">Analyzing Lab Report</h4>
+                <p className="text-xs text-[#64748B] mt-1">Extracting parameters, checking reference ranges & clinical implications…</p>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/20 text-red-200 text-xs flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {selectedDoc && analysis && !isAnalyzing && (
             <>
-              {/* Header Bar */}
-              <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+              {/* Analysis header */}
+              <div className="flex items-center justify-between bg-white rounded-xl border border-[#E2E8F0] px-4 py-3 shadow-sm">
                 <div>
-                  <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[#0F172A] flex items-center gap-2">
                     <span>{selectedDoc.filename}</span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                        analysis.urgencyLevel === 'critical'
-                          ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-                          : analysis.urgencyLevel === 'urgent'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      }`}
-                    >
-                      {analysis.urgencyLevel} Urgency
+                    <span className={`badge ${URGENCY_CONFIG[analysis.urgencyLevel].badge} text-[10px]`}>
+                      {URGENCY_CONFIG[analysis.urgencyLevel].label}
                     </span>
                   </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {analysis.findings.length} Extracted Parameters • RAG Analysis Complete
+                  <p className="text-[10px] text-[#94A3B8] mt-0.5">
+                    {analysis.findings.length} Extracted Parameters · RAG Analysis Complete
                   </p>
                 </div>
-
                 <a
                   href={`http://localhost:3000/api/documents/${selectedDoc._id}/file`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 flex items-center gap-1.5 transition-colors"
+                  className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
                 >
-                  <Eye className="h-3.5 w-3.5 text-teal-400" />
-                  View Original Document
+                  <Eye className="h-3.5 w-3.5" />
+                  View Original
                 </a>
               </div>
 
-              {/* 1. Clinical Interpretation Summary */}
-              <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-2">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-teal-400" />
-                  Clinical Pathology Narrative & Interpretation
+              {/* Clinical Interpretation */}
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4 space-y-3">
+                <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="h-4 w-4 text-teal-600" />
+                  Clinical Pathology Interpretation
                 </h4>
-                <p className="text-xs text-slate-200 leading-relaxed bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                <p className="text-sm text-[#475569] leading-relaxed bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E2E8F0]">
                   {analysis.interpretation}
                 </p>
               </div>
 
-              {/* 2. Extracted Lab Parameters Table */}
-              <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileSearch className="h-4 w-4 text-cyan-400" />
+              {/* Parameters Table */}
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4 space-y-3">
+                <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-cyan-600" />
                   Extracted Lab Parameters & Reference Ranges
                 </h4>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                <div className="overflow-x-auto rounded-xl border border-[#E2E8F0]">
+                  <table className="table-clean">
                     <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 text-[10px] uppercase font-semibold">
-                        <th className="py-2.5 px-3">Parameter</th>
-                        <th className="py-2.5 px-3">Value</th>
-                        <th className="py-2.5 px-3">Unit</th>
-                        <th className="py-2.5 px-3">Ref. Range</th>
-                        <th className="py-2.5 px-3 text-right">Status</th>
+                      <tr>
+                        <th className="text-left">Parameter</th>
+                        <th className="text-left">Value</th>
+                        <th className="text-left">Unit</th>
+                        <th className="text-left">Ref. Range</th>
+                        <th className="text-right">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody>
                       {analysis.findings.map((f, i) => {
-                        const isHigh = f.status === 'abnormal_high';
-                        const isLow = f.status === 'abnormal_low';
-                        const isCritical = f.status === 'critical';
-                        const isNormal = f.status === 'normal';
-
+                        const cfg = STATUS_CONFIG[f.status] || STATUS_CONFIG.normal;
+                        const Icon = cfg.icon;
+                        const isAbnormal = f.status !== 'normal';
                         return (
-                          <tr key={i} className="hover:bg-slate-900/40">
-                            <td className="py-2.5 px-3 font-semibold text-white">{f.parameter}</td>
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-200">{f.value}</td>
-                            <td className="py-2.5 px-3 text-slate-400">{f.unit || '-'}</td>
-                            <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{f.referenceRange || '-'}</td>
-                            <td className="py-2.5 px-3 text-right">
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                                  isCritical
-                                    ? 'bg-red-950 text-red-400 border border-red-500/40'
-                                    : isHigh
-                                    ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
-                                    : isLow
-                                    ? 'bg-cyan-950 text-cyan-400 border border-cyan-500/40'
-                                    : 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                                }`}
-                              >
-                                {isHigh && <TrendingUp className="h-3 w-3" />}
-                                {isLow && <TrendingDown className="h-3 w-3" />}
-                                {isCritical && <AlertTriangle className="h-3 w-3" />}
-                                {isNormal && <CheckCircle className="h-3 w-3" />}
-                                {f.status.replace('_', ' ')}
+                          <tr key={i} className={isAbnormal ? cfg.bg : ''}>
+                            <td className="font-semibold text-[#0F172A]">{f.parameter}</td>
+                            <td className={`font-mono font-bold ${isAbnormal ? cfg.text : 'text-[#0F172A]'}`}>{f.value}</td>
+                            <td className="text-[#94A3B8]">{f.unit || '—'}</td>
+                            <td className="text-[#94A3B8] font-mono text-xs">{f.referenceRange || '—'}</td>
+                            <td className="text-right">
+                              <span className={`badge ${cfg.badge} text-[10px] inline-flex items-center gap-1`}>
+                                <Icon className="h-3 w-3" />
+                                {cfg.label}
                               </span>
                             </td>
                           </tr>
@@ -339,30 +346,25 @@ export const LabReportAnalyzer: React.FC = () => {
                 </div>
               </div>
 
-              {/* 3. Clinical Implications & Suggested Follow-up */}
+              {/* Clinical Implications & Follow-up */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Clinical Implications
-                  </h4>
-                  <ul className="space-y-1 text-xs text-slate-300">
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Clinical Implications</h4>
+                  <ul className="space-y-2">
                     {analysis.clinicalImplications.map((imp, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-teal-400">•</span>
+                      <li key={i} className="flex items-start gap-2 text-sm text-[#475569]">
+                        <span className="text-teal-500 mt-0.5 shrink-0">•</span>
                         <span>{imp}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-
-                <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Suggested Follow-Up Investigations
-                  </h4>
-                  <ul className="space-y-1 text-xs text-slate-300">
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Suggested Follow-Up</h4>
+                  <ul className="space-y-2">
                     {analysis.suggestedFollowUp.map((step, i) => (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-teal-400">•</span>
+                      <li key={i} className="flex items-start gap-2 text-sm text-[#475569]">
+                        <span className="text-cyan-500 mt-0.5 shrink-0">•</span>
                         <span>{step}</span>
                       </li>
                     ))}

@@ -10,6 +10,7 @@ import { LabReportAnalyzer } from '../../components/LabReportAnalyzer';
 import { DocumentsList } from '../../components/DocumentsList';
 import { ChatInterface } from '../../components/ChatInterface';
 import { PatientReports } from '../../components/PatientReports';
+import { Stethoscope } from 'lucide-react';
 
 interface DocumentItem {
   _id: string;
@@ -27,18 +28,16 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'copilot' | 'reports' | 'patient_reports' | 'documents' | 'chat'>('copilot');
-  
+
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
   const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
 
-  // Redirect to login if unauthenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Load documents and chat sessions on mount
   useEffect(() => {
     if (isAuthenticated) {
       fetchDocuments();
@@ -126,16 +125,26 @@ export default function DashboardPage() {
     }
   };
 
+  // Loading state — white, clean
   if (authLoading) {
     return (
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center space-y-3">
-        <div className="h-10 w-10 border-3 border-teal-500 border-t-transparent animate-spin rounded-full" />
-        <p className="text-xs text-slate-400 font-semibold tracking-wide">Loading MedSynexa Clinical Engine...</p>
+      <div className="h-screen w-screen bg-white flex flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-500/25">
+          <Stethoscope className="h-6 w-6 text-white" />
+        </div>
+        <div className="text-center">
+          <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full spin mx-auto mb-3" />
+          <p className="text-sm font-semibold text-[#0F172A]">Loading MedSynexa</p>
+          <p className="text-xs text-[#94A3B8] mt-0.5">Clinical AI · Powered by Gemini & pgvector</p>
+        </div>
       </div>
     );
   }
 
   if (!isAuthenticated) return null;
+
+  // Only pass general documents to PatientReports (textbooks only)
+  const generalDocuments = documents.filter(d => d.documentType === 'general');
 
   return (
     <DashboardLayout
@@ -153,10 +162,9 @@ export default function DashboardPage() {
       activeChat={activeChat}
       onNewChatCreated={fetchChats}
     >
-      {/* Dynamic Tab Render */}
       {activeTab === 'copilot' && <ClinicalCopilot />}
       {activeTab === 'reports' && <LabReportAnalyzer />}
-      {activeTab === 'patient_reports' && <PatientReports documents={documents} />}
+      {activeTab === 'patient_reports' && <PatientReports documents={generalDocuments} />}
       {activeTab === 'documents' && (
         <DocumentsList
           onStartChatWithDoc={async (doc) => {

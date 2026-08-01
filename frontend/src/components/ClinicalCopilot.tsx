@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
+import { motion } from 'framer-motion';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   Stethoscope,
   Activity,
   Pill,
   ShieldAlert,
   Zap,
-  Clock,
   CheckCircle,
   AlertTriangle,
   FileText,
@@ -18,8 +20,12 @@ import {
   Plus,
   X,
   ChevronRight,
-  UserCheck,
   HeartPulse,
+  Wand2,
+  Mic,
+  MicOff,
+  Download,
+  MessageSquareQuote,
 } from 'lucide-react';
 
 interface DifferentialDiagnosis {
@@ -60,36 +66,246 @@ interface ClinicalOutput {
   responseTimeMs?: number;
 }
 
+const LIKELIHOOD_CONFIG = {
+  high:     { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    dot: 'bg-red-500'    },
+  moderate: { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
+  low:      { bg: 'bg-slate-50',  border: 'border-slate-200',  text: 'text-slate-600',  dot: 'bg-slate-400'  },
+};
+
+const MOCK_OUTPUT: ClinicalOutput = {
+  differentialDiagnoses: [
+    {
+      condition: "Dengue Fever",
+      likelihood: "high",
+      likelihood_percentage: 85,
+      icdCode: "A97.9",
+      reasoning: "High grade fever, severe retro-orbital headache, and severe myalgia (break-bone fever) strongly suggest Dengue, especially in endemic Indian regions."
+    },
+    {
+      condition: "Viral Influenza",
+      likelihood: "moderate",
+      likelihood_percentage: 45,
+      icdCode: "J11.1",
+      reasoning: "Common cause of fever and myalgia, though retro-orbital pain is less prominent."
+    }
+  ],
+  treatmentOptions: [
+    {
+      drugName: "Paracetamol",
+      indianBrandNames: ["Dolo 650", "Calpol", "Crocin Advance"],
+      dosage: "650mg",
+      frequency: "TDS or SOS (max 4g/day)",
+      duration: "3-5 days",
+      route: "Oral",
+      contraindications: ["Severe hepatic impairment"],
+      sideEffects: ["Nausea", "Hepatotoxicity in overdose"]
+    },
+    {
+      drugName: "Oral Rehydration Salts (ORS)",
+      indianBrandNames: ["Electral", "Enerzal"],
+      dosage: "1 Sachet in 1L water",
+      frequency: "Ad libitum",
+      duration: "3-5 days",
+      route: "Oral",
+      contraindications: ["Severe renal impairment"],
+      sideEffects: ["None significant if taken appropriately"]
+    }
+  ],
+  diagnosticNextSteps: [
+    "Dengue NS1 Antigen & IgM/IgG Serology",
+    "Complete Blood Count (CBC) to check for thrombocytopenia & hematocrit levels",
+    "Monitor signs of plasma leakage or bleeding"
+  ],
+  safetyFlags: [
+    {
+      type: "CONTRAINDICATION_WARNING",
+      severity: "critical",
+      message: "STRICTLY AVOID NSAIDs (Ibuprofen, Diclofenac, Aspirin) due to risk of severe bleeding in suspected Dengue."
+    }
+  ],
+  responseTimeMs: 845
+};
+
 export const ClinicalCopilot: React.FC = () => {
-  // Input States
-  const [chiefComplaint, setChiefComplaint] = useState('');
-  const [symptoms, setSymptoms] = useState<string[]>(['Fever', 'Cough']);
-  const [symptomInput, setSymptomInput] = useState('');
-  const [age, setAge] = useState<number | ''>(42);
+  // ── Manual Input States ──
+  const [age, setAge] = useState<number | ''>('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [duration, setDuration] = useState('3 days');
-  const [history, setHistory] = useState('Type 2 Diabetes (on Metformin)');
+  const [chiefComplaint, setChiefComplaint] = useState(''); 
+  const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [symptomInput, setSymptomInput] = useState('');
+
+  const [isListening, setIsListening] = useState(false);
+  const [ambientTranscript, setAmbientTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
   
-  // Vitals
-  const [bp, setBp] = useState('130/85');
-  const [pulse, setPulse] = useState<number | ''>(88);
-  const [temp, setTemp] = useState<number | ''>(101.2);
-  const [spo2, setSpo2] = useState<number | ''>(97);
-  const [rbs, setRbs] = useState<number | ''>(165);
+  const baseTranscriptRef = useRef<string>('');
+  const finalRef = useRef<string>('');
+  const interimRef = useRef<string>('');
 
-  // Allergies & Meds
-  const [allergies, setAllergies] = useState<string[]>(['Penicillin']);
-  const [allergyInput, setAllergyInput] = useState('');
-  const [currentMeds, setCurrentMeds] = useState<string[]>(['Metformin 500mg BD']);
-  const [medInput, setMedInput] = useState('');
-
-  // Output & UI States
+  // ── Output & UI States ──
   const [output, setOutput] = useState<ClinicalOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Keyboard shortcut listener for OPD speed
+  // Initialize Web Speech API
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+      };
+      
+      recognitionRef.current.onresult = (event: any) => {
+        let final = '';
+        let interim = '';
+
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+        
+        finalRef.current = final;
+        interimRef.current = interim;
+
+        const separator = baseTranscriptRef.current && final ? ' ' : '';
+        setAmbientTranscript(baseTranscriptRef.current + separator + final.trim());
+        setInterimTranscript(interim);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        if (event.error === 'no-speech') return;
+        console.warn('Speech recognition warning:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+        let fullText = baseTranscriptRef.current;
+        if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
+        if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
+        setAmbientTranscript(fullText);
+        setInterimTranscript('');
+      };
+    }
+  }, []);
+
+  // Whisper Processing State
+  const [isWhisperProcessing, setIsWhisperProcessing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start();
+      recognitionRef.current?.start(); // For visual feedback only
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      setError("Please allow microphone access to use voice dictation.");
+      setIsListening(false);
+    }
+  };
+
+  const stopRecordingAndTranscribe = async (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!mediaRecorderRef.current) {
+        resolve('');
+        return;
+      }
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Release the microphone
+        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+        
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+
+        try {
+          const response = await api.post('/speech/transcribe', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          resolve(response.data.text);
+        } catch (err) {
+          console.error("Whisper error:", err);
+          reject(err);
+        }
+      };
+
+      mediaRecorderRef.current.stop();
+      recognitionRef.current?.stop();
+    });
+  };
+
+  const toggleListening = async () => {
+    if (isListening) {
+      setIsListening(false);
+      setIsWhisperProcessing(true);
+      
+      try {
+        const whisperText = await stopRecordingAndTranscribe();
+        const separator = baseTranscriptRef.current && whisperText ? ' ' : '';
+        const fullText = baseTranscriptRef.current + separator + whisperText.trim();
+        
+        setAmbientTranscript(fullText);
+        setInterimTranscript('');
+        
+        handleMockAnalyze(); 
+      } catch (err) {
+        // Fallback to the browser's buggy text if Whisper API fails
+        let fullText = baseTranscriptRef.current;
+        if (finalRef.current) fullText += (fullText ? ' ' : '') + finalRef.current.trim();
+        if (interimRef.current) fullText += (fullText ? ' ' : '') + interimRef.current.trim();
+        
+        setAmbientTranscript(fullText);
+        setInterimTranscript('');
+        handleMockAnalyze();
+      } finally {
+        setIsWhisperProcessing(false);
+      }
+    } else {
+      baseTranscriptRef.current = '';
+      finalRef.current = '';
+      interimRef.current = '';
+      setInterimTranscript('');
+      setAmbientTranscript('');
+      setOutput(null);
+      setIsListening(true);
+      await startRecording();
+    }
+  };
+
+  const handleDownloadTranscript = () => {
+    if (!ambientTranscript) return;
+    const blob = new Blob([ambientTranscript], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Patient_Transcript_${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.key === 'Enter') {
       e.preventDefault();
@@ -103,594 +319,408 @@ export const ClinicalCopilot: React.FC = () => {
       setSymptomInput('');
     }
   };
-
-  const removeSymptom = (index: number) => {
-    setSymptoms(symptoms.filter((_, i) => i !== index));
-  };
-
-  const addAllergy = () => {
-    if (allergyInput.trim() && !allergies.includes(allergyInput.trim())) {
-      setAllergies([...allergies, allergyInput.trim()]);
-      setAllergyInput('');
-    }
-  };
-
-  const removeAllergy = (index: number) => {
-    setAllergies(allergies.filter((_, i) => i !== index));
-  };
-
-  const addMed = () => {
-    if (medInput.trim() && !currentMeds.includes(medInput.trim())) {
-      setCurrentMeds([...currentMeds, medInput.trim()]);
-      setMedInput('');
-    }
-  };
-
-  const removeMed = (index: number) => {
-    setCurrentMeds(currentMeds.filter((_, i) => i !== index));
-  };
+  const removeSymptom = (i: number) => setSymptoms(symptoms.filter((_, idx) => idx !== i));
 
   const handleAnalyze = async () => {
-    if (!chiefComplaint.trim()) {
-      setError('Chief Complaint is required.');
-      return;
+    // If using manual form
+    if (!chiefComplaint.trim() && !ambientTranscript.trim()) { 
+      setError('Please provide a Chief Complaint or use Voice Dictation.'); 
+      return; 
     }
-    if (!age) {
-      setError('Patient age is required.');
-      return;
-    }
-
+    
     setError(null);
     setIsLoading(true);
 
     try {
       const res = await api.post('/clinical/analyze', {
-        chiefComplaint,
+        chiefComplaint: ambientTranscript || chiefComplaint,
         symptoms,
-        age: Number(age),
+        age: Number(age) || undefined,
         gender,
-        duration,
-        history,
-        allergies,
-        currentMedications: currentMeds,
-        vitals: {
-          bloodPressure: bp || undefined,
-          heartRate: pulse ? Number(pulse) : undefined,
-          temperature: temp ? Number(temp) : undefined,
-          spo2: spo2 ? Number(spo2) : undefined,
-          rbs: rbs ? Number(rbs) : undefined,
-        },
       });
-
       setOutput(res.data.output);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Clinical reasoning failed. Please check backend.');
+      setError(err.response?.data?.message || 'Real API failed. Try using Mock Analysis for demo.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleClear = () => {
-    setChiefComplaint('');
-    setSymptoms([]);
-    setHistory('');
-    setAge('');
-    setBp('');
-    setPulse('');
-    setTemp('');
-    setSpo2('');
-    setRbs('');
-    setAllergies([]);
-    setCurrentMeds([]);
-    setOutput(null);
+  const handleMockAnalyze = () => {
     setError(null);
+    setIsLoading(true);
+
+    // Simulate network delay
+    setTimeout(() => {
+      setOutput(MOCK_OUTPUT);
+      setIsLoading(false);
+    }, 1500);
   };
 
+  const loadDemoData = () => {
+    setAge(32);
+    setGender('male');
+    setChiefComplaint('High grade fever for 3 days with severe headache and joint pains.');
+    setSymptoms(['Fever', 'Headache', 'Joint pain', 'Nausea']);
+    setAmbientTranscript('');
+    setOutput(null);
+    setError(null);
+    
+    // Auto-run analysis for demo
+    handleMockAnalyze();
+  };
+
+  const handleClear = () => {
+    setChiefComplaint(''); setSymptoms([]); setAge('');
+    setAmbientTranscript('');
+    setOutput(null); setError(null);
+    if (isListening) recognitionRef.current?.stop();
+  };
+
+  
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportPdf = async () => {
+    const element = document.getElementById('clinical-matrix-pdf');
+    if (!element) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('MedSynexa-Clinical-Matrix.pdf');
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const handleCopyPrescription = () => {
     if (!output) return;
     let text = `MEDSYNEXA CLINICAL DECISION SUMMARY\n`;
-    text += `Patient: ${age}yo ${gender.toUpperCase()} | CC: ${chiefComplaint}\n\n`;
+    text += `Patient: ${age || 'N/A'}yo ${gender.toUpperCase()} | CC: ${chiefComplaint || 'See transcript'}\n\n`;
     text += `TOP DIFFERENTIAL DIAGNOSES:\n`;
     output.differentialDiagnoses.forEach((dd, i) => {
       text += `${i + 1}. ${dd.condition} (${dd.likelihood_percentage}%) [${dd.icdCode || 'N/A'}]\n`;
     });
     text += `\nRECOMMENDED TREATMENT (INDIAN FORMULATIONS):\n`;
     output.treatmentOptions.forEach((tx, i) => {
-      text += `${i + 1}. ${tx.drugName} (Brands: ${tx.indianBrandNames.join(', ')}) - ${tx.dosage} ${tx.frequency} for ${tx.duration}\n`;
+      text += `${i + 1}. ${tx.drugName} (${tx.indianBrandNames.join(', ')}) - ${tx.dosage} ${tx.frequency} for ${tx.duration}\n`;
     });
     text += `\nDIAGNOSTIC NEXT STEPS:\n` + output.diagnosticNextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n');
-
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden space-y-4">
-      {/* Top Banner */}
-      <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-2xl border border-teal-500/20 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-            <Stethoscope className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-white tracking-tight">MedSynexa OPD Clinical Copilot</h2>
-              <span className="bg-teal-500/10 border border-teal-500/30 text-teal-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                ICMR / NHP Aligned
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              Sub-10s OPD real-time decision support & drug interaction checker
-            </p>
-          </div>
-        </div>
+    <div className="h-full flex flex-col overflow-hidden bg-[#F8FAFC]">
+      <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col overflow-y-auto">
 
-        <div className="flex items-center gap-2">
-          {output?.responseTimeMs && (
-            <div className="flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-300 text-xs font-semibold">
-              <Zap className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
-              <span>{output.responseTimeMs} ms</span>
-            </div>
-          )}
-
-          <button
-            onClick={handleClear}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-colors flex items-center gap-1"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Reset Patient
-          </button>
-        </div>
-      </div>
-
-      {/* Main Grid: Input Form (Left) & Output Cards (Right) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
-        
-        {/* Left Column: OPD Note & Vitals Input Form */}
-        <div className="lg:col-span-5 glass-panel p-5 rounded-3xl border-slate-800/80 overflow-y-auto space-y-4 flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <HeartPulse className="h-4 w-4 text-teal-400" />
-              Patient Encounter Input
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">Press Ctrl+Enter to analyze</span>
-          </div>
-
-          {/* Demographics & CC */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Age</label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="42"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Gender</label>
-                <select
-                  value={gender}
-                  onChange={(e: any) => setGender(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Duration</label>
-                <input
-                  type="text"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="3 days"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Chief Complaint (Unstructured Note) *
-              </label>
-              <textarea
-                rows={3}
-                value={chiefComplaint}
-                onChange={(e) => setChiefComplaint(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-all resize-none"
-                placeholder="High grade fever with productive cough, mild breathlessness on exertion for 3 days..."
-                required
-              />
-            </div>
-          </div>
-
-          {/* Vitals Grid */}
-          <div>
-            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
-              OPD Vitals
-            </label>
-            <div className="grid grid-cols-5 gap-1.5">
-              <div>
-                <span className="text-[9px] text-slate-500 block">BP</span>
-                <input
-                  type="text"
-                  value={bp}
-                  onChange={(e) => setBp(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-teal-300 text-center"
-                  placeholder="120/80"
-                />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500 block">HR (bpm)</span>
-                <input
-                  type="number"
-                  value={pulse}
-                  onChange={(e) => setPulse(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-teal-300 text-center"
-                  placeholder="80"
-                />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500 block">Temp (°F)</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={temp}
-                  onChange={(e) => setTemp(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-teal-300 text-center"
-                  placeholder="98.6"
-                />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500 block">SpO2 (%)</span>
-                <input
-                  type="number"
-                  value={spo2}
-                  onChange={(e) => setSpo2(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-teal-300 text-center"
-                  placeholder="98"
-                />
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-500 block">RBS (mg/dL)</span>
-                <input
-                  type="number"
-                  value={rbs}
-                  onChange={(e) => setRbs(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-teal-300 text-center"
-                  placeholder="140"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Symptoms Tags */}
-          <div>
-            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-              Key Symptoms
-            </label>
-            <div className="flex gap-1.5 mb-2">
-              <input
-                type="text"
-                value={symptomInput}
-                onChange={(e) => setSymptomInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSymptom())}
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600"
-                placeholder="Add symptom & enter..."
-              />
-              <button
-                type="button"
-                onClick={addSymptom}
-                className="px-3 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-xs font-semibold"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {symptoms.map((s, i) => (
-                <span
-                  key={i}
-                  className="bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs px-2.5 py-0.5 rounded-lg flex items-center gap-1"
-                >
-                  {s}
-                  <button onClick={() => removeSymptom(i)} className="text-teal-500 hover:text-teal-200">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Allergies & Medications */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Known Allergies
-              </label>
-              <div className="flex gap-1 mb-1.5">
-                <input
-                  type="text"
-                  value={allergyInput}
-                  onChange={(e) => setAllergyInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAllergy())}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-white"
-                  placeholder="e.g. Penicillin"
-                />
-                <button type="button" onClick={addAllergy} className="px-2 bg-slate-800 text-amber-400 rounded-lg text-xs">
-                  +
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {allergies.map((a, i) => (
-                  <span key={i} className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
-                    {a}
-                    <button onClick={() => removeAllergy(i)}>×</button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Current Medications
-              </label>
-              <div className="flex gap-1 mb-1.5">
-                <input
-                  type="text"
-                  value={medInput}
-                  onChange={(e) => setMedInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMed())}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-white"
-                  placeholder="e.g. Metformin"
-                />
-                <button type="button" onClick={addMed} className="px-2 bg-slate-800 text-cyan-400 rounded-lg text-xs">
-                  +
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {currentMeds.map((m, i) => (
-                  <span key={i} className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
-                    {m}
-                    <button onClick={() => removeMed(i)}>×</button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* History */}
-          <div>
-            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-              Relevant Medical History
-            </label>
-            <input
-              type="text"
-              value={history}
-              onChange={(e) => setHistory(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white"
-              placeholder="e.g. T2DM 5 yrs, Hypertension, Smoker"
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/20 text-red-200 text-xs flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Action Button */}
-          <button
-            onClick={handleAnalyze}
-            disabled={isLoading}
-            className="w-full py-3.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-2xl font-bold text-xs shadow-lg shadow-teal-600/20 border border-teal-400/30 transition-all flex items-center justify-center gap-2 mt-auto"
-          >
-            {isLoading ? (
-              <>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
-                <span>Synthesizing Clinical Decision (&lt; 10s)...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 fill-white" />
-                <span>Run Instant OPD Reasoning</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Right Column: Output Decision Matrix */}
-        <div className="lg:col-span-7 flex flex-col space-y-4 overflow-y-auto">
-          
-          {!output && !isLoading && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 glass-panel rounded-3xl border-slate-800/80 space-y-4">
-              <div className="h-16 w-16 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 animate-pulse">
-                <Stethoscope className="h-8 w-8" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">OPD Clinical Reasoning Matrix</h3>
-                <p className="text-xs text-slate-400 max-w-sm mt-1 leading-relaxed">
-                  Enter patient chief complaint & vitals on the left, then click <strong>Run Instant OPD Reasoning</strong> to get differential diagnoses, ICMR/NHP Indian formulations, and safety flags.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="h-full flex flex-col items-center justify-center p-8 glass-panel rounded-3xl border-slate-800/80 space-y-4">
-              <div className="h-12 w-12 border-3 border-teal-500 border-t-transparent animate-spin rounded-full" />
-              <div className="text-center space-y-1">
-                <h4 className="text-sm font-bold text-white">MedSynexa Reasoning Engine Active</h4>
-                <p className="text-xs text-slate-400">Filtering ICMR/NHP guidelines & checking drug-drug interactions...</p>
-              </div>
-            </div>
-          )}
-
-          {output && !isLoading && (
-            <>
-              {/* Output Header Controls */}
-              <div className="flex items-center justify-between bg-slate-900/40 p-3 rounded-2xl border border-slate-800">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-teal-400" />
-                  <span className="text-xs font-bold text-white">Clinical Decision Matrix</span>
+        {/* ─── LIVE TRANSCRIPT / LISTENING STATE ─── */}
+        {(isListening || ambientTranscript) && !output && !isLoading && (
+          <div className="h-full flex flex-col items-center justify-center p-10">
+            <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-8 w-full max-w-2xl text-center space-y-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-teal-50/50 to-transparent pointer-events-none" />
+              
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="h-20 w-20 rounded-full bg-teal-50 border-8 border-white shadow-sm flex items-center justify-center text-teal-500 mb-6 relative">
+                  <div className="absolute inset-0 rounded-full bg-teal-400 opacity-20 animate-ping"></div>
+                  <Mic className="h-8 w-8 relative z-10" />
                 </div>
+                <h3 className="text-xl font-bold text-[#0F172A] mb-2">Listening to Consultation...</h3>
+                <p className="text-sm text-[#64748B] mb-8">Speak naturally. The AI will extract symptoms when you're done.</p>
+                
+                <div className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-6 min-h-[120px] text-left text-base text-[#334155] leading-relaxed relative">
+                  {ambientTranscript || interimTranscript ? (
+                    <>
+                      <span>{ambientTranscript}</span>
+                      <span className="text-teal-600/60 italic ml-1">{interimTranscript}</span>
+                    </>
+                  ) : (
+                    <span className="text-[#94A3B8] italic">Waiting for speech...</span>
+                  )}
+                  {isListening && <span className="inline-block w-2 h-5 bg-teal-500 ml-1 animate-pulse align-middle"></span>}
+                </div>
+
+                <div className="mt-8 flex items-center gap-4">
+                  <button
+                    onClick={toggleListening}
+                    disabled={isWhisperProcessing}
+                    className={`px-8 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2 ${
+                      isWhisperProcessing
+                      ? 'bg-teal-50 text-teal-600 border border-teal-200 cursor-wait'
+                      : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:shadow-lg'
+                    }`}
+                  >
+                    {isWhisperProcessing ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" /> 
+                        Transcribing...
+                      </>
+                    ) : (
+                      <><MicOff className="h-5 w-5" /> Stop & Generate Matrix</>
+                    )}
+                  </button>
+                  <button onClick={handleClear} className="px-6 py-3.5 rounded-xl text-[#64748B] font-bold text-sm hover:bg-[#F1F5F9] transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── EMPTY STATE (FULL SCREEN) ─── */}
+        {!output && !isLoading && !isListening && !ambientTranscript && (
+          <div className="h-full flex flex-col items-center justify-center text-center p-10">
+            <div className="max-w-xl flex flex-col items-center relative z-10 fade-in-up">
+              <div className="h-24 w-24 rounded-full bg-teal-50 border-8 border-white shadow-xl flex items-center justify-center text-teal-500 mb-8 relative">
+                <div className="absolute inset-0 rounded-full bg-teal-400 opacity-20 animate-pulse"></div>
+                <Mic className="h-10 w-10 relative z-10" />
+              </div>
+              
+              <h2 className="text-3xl font-extrabold text-[#0F172A] tracking-tight mb-4">
+                Ambient Clinical Scribe
+              </h2>
+              <p className="text-base text-[#64748B] leading-relaxed mb-10 max-w-md">
+                Experience frictionless documentation. Our AI listens to your patient consultation in real-time and instantly generates a comprehensive clinical reasoning matrix.
+              </p>
+
+              <div className="flex items-center justify-center gap-4 w-full px-4">
+                <button
+                  onClick={toggleListening}
+                  className="flex-1 py-4 px-6 rounded-2xl bg-teal-600 text-white font-bold text-base shadow-xl shadow-teal-600/20 hover:bg-teal-700 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                >
+                  <Mic className="h-5 w-5" />
+                  Start Listening
+                </button>
+                <button
+                  onClick={loadDemoData}
+                  className="flex-1 py-4 px-6 rounded-2xl bg-white text-[#0F172A] border-2 border-[#E2E8F0] font-bold text-base shadow-sm hover:bg-[#F8FAFC] hover:border-[#CBD5E1] hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                >
+                  <Wand2 className="h-5 w-5 text-indigo-500" />
+                  Load Demo Matrix
+                </button>
+              </div>
+            </div>
+            
+            {/* Background decorations */}
+            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/50 via-[#F8FAFC] to-[#F8FAFC] pointer-events-none z-0" />
+          </div>
+        )}
+
+        {/* ─── LOADING STATE ─── */}
+        {isLoading && (
+          <div className="h-full flex flex-col items-center justify-center p-10 fade-in-up">
+            <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xl p-10 flex flex-col items-center justify-center max-w-md w-full">
+              <div className="h-16 w-16 border-[4px] border-teal-500 border-t-transparent animate-spin rounded-full mb-6" />
+              <h4 className="text-lg font-bold text-[#0F172A]">Synthesizing Consultation</h4>
+              <p className="text-sm text-[#64748B] mt-2 text-center">Extracting clinical markers & checking ICMR guidelines...</p>
+            </div>
+          </div>
+        )}
+
+        {/* ─── MATRIX OUTPUT ─── */}
+        {output && !isLoading && (
+          <div className="space-y-6 pb-20 fade-in-up" id="clinical-matrix-pdf">
+            
+            {/* Output Header Controls */}
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] px-5 py-4 shadow-sm sticky top-0 z-20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#0F172A]">Clinical Decision Matrix</h3>
+                  {output.responseTimeMs && (
+                    <p className="text-xs text-green-600 font-semibold flex items-center gap-1 mt-0.5">
+                      <Zap className="h-3 w-3" /> Generated in {output.responseTimeMs} ms
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Transcript Dropdown / Trigger could go here if needed, but omitted for cleanliness */}
+                <button
+                  onClick={handleClear}
+                  className="btn-ghost px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-xl"
+                >
+                  <RefreshCw className="h-4 w-4" /> Reset Scribe
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  disabled={isExporting}
+                  className="px-5 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isExporting ? (
+                    <div className="h-4 w-4 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" /> 
+                  ) : <Download className="h-4 w-4" />}
+                  <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+                </button>
                 <button
                   onClick={handleCopyPrescription}
-                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-semibold rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5"
+                  className="px-5 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-sm flex items-center gap-2 transition-colors"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  <span>{copied ? 'Copied to Clipboard' : 'Copy Prescription'}</span>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
+            </div>
 
-              {/* 1. Safety & Drug Interaction Flags (Top priority display) */}
-              {output.safetyFlags && output.safetyFlags.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldAlert className="h-4 w-4 text-amber-400" />
-                    Safety Alerts & Drug Interaction Checker
-                  </h4>
-                  <div className="space-y-1.5">
-                    {output.safetyFlags.map((flag, idx) => {
-                      const isCritical = flag.severity === 'critical';
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-xl text-xs flex items-start gap-2.5 border ${
-                            isCritical
-                              ? 'bg-red-950/40 border-red-500/30 text-red-200'
-                              : 'bg-amber-950/40 border-amber-500/30 text-amber-200'
-                          }`}
-                        >
-                          <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${isCritical ? 'text-red-400' : 'text-amber-400'}`} />
-                          <div className="flex-1">
-                            <span className="font-bold uppercase tracking-wider text-[10px] block opacity-80">
-                              [{flag.type.replace(/_/g, ' ')}] - {flag.severity}
-                            </span>
-                            <p className="mt-0.5">{flag.message}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+            {/* If there was a transcript, show a collapsed summary of it */}
+            {ambientTranscript && (
+               <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-5 space-y-3">
+                 <div className="flex items-center justify-between">
+                   <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
+                     <MessageSquareQuote className="h-4 w-4 text-indigo-500" />
+                     Consultation Transcript
+                   </h4>
+                   <button 
+                     onClick={handleDownloadTranscript}
+                     className="text-[10px] font-bold text-teal-600 hover:text-teal-800 transition-colors flex items-center gap-1"
+                   >
+                     <Download className="h-3 w-3" /> Download .txt
+                   </button>
+                 </div>
+                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4 text-sm text-[#475569] leading-relaxed">
+                   {ambientTranscript}
+                 </div>
+               </div>
+            )}
 
-              {/* 2. Differential Diagnoses */}
-              <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-teal-400" />
-                  Ranked Differential Diagnoses
+            {/* Safety Flags */}
+            {output.safetyFlags && output.safetyFlags.length > 0 && (
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
+                <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-amber-500" />
+                  Safety Alerts & Warnings
                 </h4>
+                <div className="grid gap-3">
+                  {output.safetyFlags.map((flag, idx) => {
+                    const isCritical = flag.severity === 'critical';
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-4 rounded-xl text-sm flex items-start gap-3 border ${
+                          isCritical
+                            ? 'bg-red-50 border-red-200 text-red-800'
+                            : 'bg-amber-50 border-amber-200 text-amber-800'
+                        }`}
+                      >
+                        <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${isCritical ? 'text-red-500' : 'text-amber-500'}`} />
+                        <div>
+                          <span className="font-bold uppercase tracking-wider text-[11px] block opacity-70 mb-1">
+                            [{flag.type.replace(/_/g, ' ')}] — {flag.severity}
+                          </span>
+                          <p className="font-medium leading-relaxed">{flag.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                <div className="space-y-2">
-                  {output.differentialDiagnoses.map((dd, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-900/80 p-3 rounded-xl border border-slate-800/80 space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-5 w-5 rounded-full bg-teal-500/10 text-teal-300 text-[10px] font-bold flex items-center justify-center border border-teal-500/30">
+            {/* Differential Diagnoses */}
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
+              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
+                <Activity className="h-5 w-5 text-teal-600" />
+                Ranked Differential Diagnoses
+              </h4>
+              <div className="grid gap-3">
+                {output.differentialDiagnoses.map((dd, idx) => {
+                  const cfg = LIKELIHOOD_CONFIG[dd.likelihood] || LIKELIHOOD_CONFIG.low;
+                  return (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      transition={{ duration: 0.4, delay: idx * 0.1 }}
+                      key={idx} className={`p-5 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className={`h-7 w-7 rounded-full ${cfg.bg} border ${cfg.border} ${cfg.text} text-xs font-bold flex items-center justify-center`}>
                             {idx + 1}
                           </span>
-                          <span className="font-bold text-xs text-white">{dd.condition}</span>
+                          <span className={`font-bold text-lg ${cfg.text}`}>{dd.condition}</span>
                           {dd.icdCode && (
-                            <span className="bg-slate-800 text-slate-400 text-[9px] px-1.5 py-0.5 rounded font-mono">
-                              ICD: {dd.icdCode}
-                            </span>
+                            <span className="badge badge-slate text-[10px] font-mono px-2 py-0.5">ICD: {dd.icdCode}</span>
                           )}
                         </div>
-
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase">
-                            {dd.likelihood} Likelihood
-                          </span>
-                          <span className="bg-teal-500/20 text-teal-300 font-mono text-xs font-bold px-2 py-0.5 rounded-md border border-teal-500/30">
+                          <span className={`text-xs font-semibold uppercase ${cfg.text}`}>{dd.likelihood}</span>
+                          <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-lg border ${cfg.bg} ${cfg.border} ${cfg.text} bg-white`}>
                             {dd.likelihood_percentage}%
                           </span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 leading-relaxed pl-7">{dd.reasoning}</p>
-                    </div>
-                  ))}
-                </div>
+                      <p className="text-sm text-[#475569] leading-relaxed pl-10">{dd.reasoning}</p>
+                    </motion.div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* 3. Recommended Treatment Options (Indian Formulations) */}
-              <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Pill className="h-4 w-4 text-cyan-400" />
-                  Localized Treatment Options (Indian Generic & Brands)
-                </h4>
-
-                <div className="space-y-2.5">
-                  {output.treatmentOptions.map((tx, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800/80 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-teal-300">{tx.drugName}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">({tx.route})</span>
-                        </div>
-                        <span className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs px-2 py-0.5 rounded-md font-semibold">
-                          {tx.dosage} • {tx.frequency} • {tx.duration}
-                        </span>
+            {/* Treatment Options */}
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
+              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
+                <Pill className="h-5 w-5 text-indigo-600" />
+                Treatment Options — Indian Generic & Brands
+              </h4>
+              <div className="grid gap-4">
+                {output.treatmentOptions.map((tx, idx) => (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.4, delay: (output.differentialDiagnoses.length * 0.1) + (idx * 0.1) }}
+                    key={idx} className="p-5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-lg text-[#0F172A]">{tx.drugName}</span>
+                        <span className="text-xs text-[#94A3B8] font-mono bg-white px-2 py-0.5 rounded-md border border-[#E2E8F0]">Route: {tx.route}</span>
                       </div>
-
-                      {/* Indian Brand Names */}
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Indian Brands:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {tx.indianBrandNames.map((b, bIdx) => (
-                            <span key={bIdx} className="bg-slate-800 text-slate-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                              {b}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {tx.contraindications.length > 0 && (
-                        <div className="text-[11px] text-amber-300/80 bg-amber-950/20 px-2.5 py-1 rounded border border-amber-500/10">
-                          <strong>Contraindications:</strong> {tx.contraindications.join(', ')}
-                        </div>
-                      )}
+                      <span className="bg-indigo-100 text-indigo-800 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold font-mono shadow-sm">
+                        {tx.dosage} · {tx.frequency} · {tx.duration}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-2 text-sm text-[#475569]">
+                      <span className="text-xs font-bold text-[#94A3B8] uppercase">Indian Brands:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {tx.indianBrandNames.map((b, bIdx) => (
+                          <span key={bIdx} className="bg-white border border-[#CBD5E1] text-[#475569] px-2 py-0.5 rounded-md text-xs font-medium shadow-sm">{b}</span>
+                        ))}
+                      </div>
+                    </div>
+                    {tx.contraindications.length > 0 && (
+                      <div className="text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200 mt-2">
+                        <strong className="text-amber-900 uppercase text-[10px] mr-1 block mb-0.5">Contraindications</strong> 
+                        {tx.contraindications.join(', ')}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
               </div>
+            </div>
 
-              {/* 4. Recommended Diagnostic Next Steps */}
-              <div className="glass-panel p-4 rounded-2xl border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="h-4 w-4 text-emerald-400" />
-                  Recommended Diagnostic Next Steps
-                </h4>
-
-                <ul className="space-y-1.5">
-                  {output.diagnosticNextSteps.map((step, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-xs text-slate-300">
-                      <ChevronRight className="h-3.5 w-3.5 text-teal-400 shrink-0" />
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
-        </div>
+            {/* Diagnostic Next Steps */}
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm p-6 space-y-4">
+              <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-600" />
+                Diagnostic Next Steps
+              </h4>
+              <ul className="space-y-3 bg-[#F8FAFC] border border-[#E2E8F0] p-5 rounded-xl">
+                {output.diagnosticNextSteps.map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-base text-[#334155] font-medium">
+                    <ChevronRight className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

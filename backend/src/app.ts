@@ -50,11 +50,14 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+import speechRoutes from './routes/speechRoutes';
+
 // Router mounts
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/opd', opdRoutes);
+app.use('/api/speech', speechRoutes);
 
 // Global 404 Route handler
 app.use((req: Request, res: Response) => {
