@@ -45,16 +45,16 @@ interface DocumentItem {
 }
 
 const STATUS_CONFIG = {
-  normal:       { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  badge: 'badge-green',  icon: CheckCircle, label: 'Normal' },
-  abnormal_high:{ bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  badge: 'badge-amber',  icon: TrendingUp,  label: 'High'   },
-  abnormal_low: { bg: 'bg-cyan-50',   border: 'border-cyan-200',   text: 'text-cyan-700',   badge: 'badge-cyan',   icon: TrendingDown,label: 'Low'    },
-  critical:     { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    badge: 'badge-red',    icon: AlertTriangle,label: 'Critical'},
+  normal: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'badge-green', icon: CheckCircle, label: 'Normal' },
+  abnormal_high: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'badge-amber', icon: TrendingUp, label: 'High' },
+  abnormal_low: { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', badge: 'badge-cyan', icon: TrendingDown, label: 'Low' },
+  critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'badge-red', icon: AlertTriangle, label: 'Critical' },
 };
 
 const URGENCY_CONFIG = {
-  routine:  { badge: 'badge-green',  label: 'Routine Urgency'  },
-  urgent:   { badge: 'badge-amber',  label: 'Urgent'           },
-  critical: { badge: 'badge-red',    label: 'Critical Urgency' },
+  routine: { badge: 'badge-green', label: 'Routine Urgency' },
+  urgent: { badge: 'badge-amber', label: 'Urgent' },
+  critical: { badge: 'badge-red', label: 'Critical Urgency' },
 };
 
 export const LabReportAnalyzer: React.FC = () => {
@@ -169,7 +169,7 @@ export const LabReportAnalyzer: React.FC = () => {
 
         {/* ── Left: Document Selector ── */}
         <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-y-auto flex flex-col">
-          
+
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F1F5F9] shrink-0">
             <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#475569]">
               <FileText className="h-3.5 w-3.5 text-cyan-600" />
@@ -210,11 +210,10 @@ export const LabReportAnalyzer: React.FC = () => {
                     <button
                       key={doc._id}
                       onClick={() => handleSelectDoc(doc)}
-                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group ${
-                        isSelected
+                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group ${isSelected
                           ? 'bg-cyan-50 border-cyan-200 shadow-sm'
                           : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3 truncate min-w-0">
                         <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-cyan-100' : 'bg-white border border-[#E2E8F0]'}`}>
