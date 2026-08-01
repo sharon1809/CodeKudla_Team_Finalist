@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse';//lite -parse can also be used (b)
 import mammoth from 'mammoth';
 import { extractTextWithGeminiVision } from '../services/langchainService';
 

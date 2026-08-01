@@ -34,22 +34,22 @@ export const processDocumentPipeline = async (
 
     // 2. Chunk text intelligently with overlap
     // For lab reports, chunk size is smaller (500) to keep lab parameters precise
-    const chunkSize = documentType === 'lab_report' ? 500 : 1000;
-    const chunkOverlap = documentType === 'lab_report' ? 100 : 200;
+    const chunkSize = documentType === 'lab_report' ? 500 : 1000;//500 words 
+    const chunkOverlap = documentType === 'lab_report' ? 100 : 200; 
 
     console.log(`Splitting text into chunks (size: ${chunkSize}, overlap: ${chunkOverlap})`);
     const chunks = await splitTextIntoChunks(rawText, chunkSize, chunkOverlap);
     const chunkCount = chunks.length;
-    console.log(`Split text into ${chunkCount} chunks`);
+    console.log(`Split text into ${chunkCount} chunks`);//optimize the values
 
     // 3. Generate embeddings via LangChain Gemini Embeddings
     console.log(`Generating embeddings for ${chunkCount} chunks`);
     const textsOnly = chunks.map((c) => c.text);
-    const embeddings = await getBatchEmbeddings(textsOnly);
+    const embeddings = await getBatchEmbeddings(textsOnly);//opemrouter
 
     // 4. Save file permanently to local disk
     console.log(`Saving file to permanent local storage`);
-    const permanentPath = saveUploadedFile(filePath, originalName, userId);
+    const permanentPath = saveUploadedFile(filePath, originalName, userId);//cloud 
 
     // 5. Create Document Metadata in MongoDB
     console.log(`Saving document metadata to MongoDB`);
@@ -74,7 +74,7 @@ export const processDocumentPipeline = async (
       documentType,
       chunks,
       embeddings
-    );
+    );//postgres  with batches
 
     return documentRecord;
   } catch (error: any) {

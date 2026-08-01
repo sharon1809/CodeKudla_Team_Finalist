@@ -22,7 +22,7 @@ export const uploadDocument = async (req: Request, res: Response): Promise<void>
       res.status(400).json({ message: 'No file uploaded or file type is not supported.' });
       return;
     }
-
+    //general could be 
     const file = req.file;
     const documentType = (req.body.documentType === 'lab_report' ? 'lab_report' : 'general');
 
