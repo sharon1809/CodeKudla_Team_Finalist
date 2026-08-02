@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(userObj));
 
       setUser(userObj);
-      router.push('/dashboard');
+      router.push('/');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Login failed. Please try again.');
     }
@@ -106,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(userObj));
 
       setUser(userObj);
-      router.push('/dashboard');
+      router.push('/');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Registration failed.');
     }

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ─── Root Design Tokens (Clinical Light Theme) ───────────────────────── */
 :root {

@@ -37,76 +37,26 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Catch 401/403 and rotate tokens
+// Response Interceptor: Catch 401/403 and kick out if unauthorized
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
+  (error) => {
     const originalRequest = error.config;
 
-    // Skip if login/register/refresh
+    // Skip if login/register
     if (
       originalRequest.url?.includes('/auth/login') ||
-      originalRequest.url?.includes('/auth/register') ||
-      originalRequest.url?.includes('/auth/refresh')
+      originalRequest.url?.includes('/auth/register')
     ) {
       return Promise.reject(error);
     }
 
-    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      const storedRefreshToken = localStorage.getItem('refreshToken');
-      if (!storedRefreshToken) {
-        isRefreshing = false;
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-
-      try {
-        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken: storedRefreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data;
-
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        processQueue(null, accessToken);
-        isRefreshing = false;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        isRefreshing = false;
-
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-        }
-        return Promise.reject(refreshError);
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
       }
     }
 
