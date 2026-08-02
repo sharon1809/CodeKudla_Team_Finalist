@@ -1,16 +1,11 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { executeWithFallback } from '../apiKeyManager';
 
 export const extractTextWithGeminiVision = async (
   filePath: string,
   mimeType: string = 'application/pdf'
 ): Promise<string> => {
   const fs = await import('fs');
-  const llm = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    model: 'gemini-2.5-flash',
-    temperature: 0,
-  });
-
   const fileData = fs.readFileSync(filePath);
   const base64Data = fileData.toString('base64');
 
@@ -31,6 +26,14 @@ Preserve the structure as much as possible. Output ONLY the extracted text, noth
     ],
   };
 
-  const response: any = await llm.invoke([message]);
-  return typeof response.content === 'string' ? response.content : String(response.content);
+  return executeWithFallback('gemini', async (apiKey) => {
+    const llm = new ChatGoogleGenerativeAI({
+      apiKey,
+      model: 'gemini-2.5-flash',
+      temperature: 0,
+    });
+
+    const response: any = await llm.invoke([message]);
+    return typeof response.content === 'string' ? response.content : String(response.content);
+  });
 };
