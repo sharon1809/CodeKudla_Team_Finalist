@@ -332,17 +332,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
 
               <div className="max-w-[85%] sm:max-w-[75%] space-y-2.5">
                 <div
-                  className={`rounded-2xl px-4 py-3 border ${
+                  className={`rounded-2xl px-4 py-4 border ${
                     isUser
-                      ? 'msg-user border-blue-600 text-white rounded-br-sm shadow-sm'
-                      : 'msg-ai border-gray-250/70 text-[#111111] rounded-bl-sm shadow-sm'
+                      ? 'bg-teal-700 border-teal-700 text-white rounded-br-sm shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-900 rounded-bl-sm shadow-sm'
                   }`}
                 >
-                  <div className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${isUser ? 'text-blue-100' : 'text-gray-400'}`}>
+                  <div className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${isUser ? 'text-teal-200' : 'text-slate-400'}`}>
                     {isUser ? 'Doctor' : 'MedSynexa AI'}
                   </div>
 
-                  <div className={`prose prose-sm max-w-none text-xs leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
+                  <div className={`text-xs sm:text-sm leading-relaxed ${isUser ? 'prose prose-sm prose-invert max-w-none text-white' : ''}`}>
                     {isUser ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {msg.content}

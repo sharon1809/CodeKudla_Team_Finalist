@@ -21,6 +21,11 @@ import {
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
 
+const stripMarkdown = (text: string) => {
+  if (!text) return "";
+  return text.replace(/\*\*/g, '').replace(/^[*\-•]\s+/gm, '').replace(/#/g, '').trim();
+};
+
 export default function DrugSafetyPage() {
   const [reports, setReports] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -315,7 +320,7 @@ export default function DrugSafetyPage() {
                             {report.drugName}
                           </h3>
                           <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">
-                            {report.message}
+                            {stripMarkdown(report.message)}
                           </p>
                         </div>
 

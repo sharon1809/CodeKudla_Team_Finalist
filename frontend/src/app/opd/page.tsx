@@ -19,6 +19,7 @@ import {
   Pill,
   History,
   ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
@@ -54,6 +55,24 @@ export default function OPDPage() {
       toast.error("Failed to load OPD sessions");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this OPD session record?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/clinical/sessions/${sessionId}`);
+      toast.success("OPD Session deleted successfully");
+      setSessions((prev) => prev.filter((s) => s._id !== sessionId));
+      if (selectedSession?._id === sessionId) {
+        setSelectedSession(null);
+      }
+    } catch (err: any) {
+      toast.error("Failed to delete OPD session");
     }
   };
 
@@ -313,11 +332,22 @@ export default function OPDPage() {
                         Encounter Date: {new Date(selectedSession.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    {selectedSession.output?.responseTimeMs && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <Zap className="w-3.5 h-3.5" /> Generated in {selectedSession.output.responseTimeMs}ms
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {selectedSession.output?.responseTimeMs && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Zap className="w-3.5 h-3.5" /> Generated in {selectedSession.output.responseTimeMs}ms
+                        </span>
+                      )}
+                      {selectedSession._id && (
+                        <button
+                          onClick={(e) => handleDeleteSession(e, selectedSession._id)}
+                          className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Session</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-6">
@@ -358,9 +388,18 @@ export default function OPDPage() {
                           <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
                             OPD Session
                           </span>
-                          <span className="text-xs text-slate-400 font-medium">
-                            {new Date(session.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400 font-medium">
+                              {new Date(session.createdAt).toLocaleDateString()}
+                            </span>
+                            <button
+                              onClick={(e) => handleDeleteSession(e, session._id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Delete OPD Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <p className="text-sm font-bold text-slate-900 line-clamp-2 mb-3 group-hover:text-teal-700 transition-colors">
                           {session.input.chiefComplaint}

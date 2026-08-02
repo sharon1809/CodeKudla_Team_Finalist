@@ -17,6 +17,7 @@ import {
   UploadCloud,
   CheckCircle2,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
@@ -56,6 +57,24 @@ export default function XrayPage() {
       toast.error("Failed to load X-ray reports");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteStudy = async (e: React.MouseEvent, studyId: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this X-Ray radiology record?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/xray/studies/${studyId}`);
+      toast.success("Radiology study deleted successfully");
+      setStudies((prev) => prev.filter((s) => s._id !== studyId));
+      if (selectedStudy?.study?._id === studyId) {
+        setSelectedStudy(null);
+      }
+    } catch (err: any) {
+      toast.error("Failed to delete radiology study");
     }
   };
 
@@ -302,11 +321,20 @@ export default function XrayPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
                         <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
                         Verified Against Radiologist Guidelines
                       </span>
+                      {selectedStudy.study?._id && (
+                        <button
+                          onClick={(e) => handleDeleteStudy(e, selectedStudy.study._id)}
+                          className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Scan</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -396,9 +424,18 @@ export default function XrayPage() {
                           <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
                             {study.studyType}
                           </span>
-                          <span className="text-xs text-slate-400 font-medium">
-                            {new Date(study.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400 font-medium">
+                              {new Date(study.createdAt).toLocaleDateString()}
+                            </span>
+                            <button
+                              onClick={(e) => handleDeleteStudy(e, study._id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Delete Radiology Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <h3 className="text-sm font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">

@@ -4,7 +4,7 @@ import { analyzeXrayWithGemini, generateGroundedReport } from '../services/xrayS
 import { generateAndUploadReportPDF } from '../services/pdfService';
 import { searchMedicalLibrary } from '../services/langchainService';
 import { sendSMS } from '../services/smsService';
-import { saveUploadedFile, downloadAndDecompressFile } from '../services/storageService';
+import { saveUploadedFile, downloadAndDecompressFile, deleteUploadedFile } from '../services/storageService';
 import { Types } from 'mongoose';
 import { Patient } from '../models/Patient';
 import { User } from '../models/User';
@@ -228,3 +228,34 @@ export const getXrayImageFile = async (req: Request, res: Response): Promise<voi
     res.status(500).json({ error: 'Error serving image file' });
   }
 };
+
+export const deleteStudy = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const study = await XrayStudy.findById(id);
+
+    if (!study) {
+      res.status(404).json({ error: 'Study not found' });
+      return;
+    }
+
+    const image = await XrayImage.findOne({ studyId: id });
+    if (image?.imageUrl) {
+      try {
+        await deleteUploadedFile(image.imageUrl);
+      } catch (err) {
+        console.warn('Failed to delete image file from storage:', err);
+      }
+    }
+
+    await XrayImage.deleteMany({ studyId: id });
+    await AIReport.deleteMany({ studyId: id });
+    await FinalReport.deleteMany({ studyId: id });
+    await XrayStudy.findByIdAndDelete(id);
+
+    res.status(200).json({ message: 'Radiology study deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to delete study' });
+  }
+};
+

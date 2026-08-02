@@ -89,3 +89,26 @@ export const getClinicalSessions = async (req: Request, res: Response): Promise<
     res.status(500).json({ message: 'Failed to fetch sessions', error: error.message });
   }
 };
+
+export const deleteClinicalSession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const doctorId = req.user?.id;
+    const { id } = req.params;
+
+    if (!doctorId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const session = await ClinicalSession.findOneAndDelete({ _id: id, userId: doctorId });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+
+    res.status(200).json({ message: 'Clinical session deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to delete session', error: error.message });
+  }
+};
+

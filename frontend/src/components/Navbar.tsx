@@ -11,8 +11,7 @@ import {
   FileSearch,
   Users,
   BookOpen,
-  Search,
-  ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -66,41 +65,26 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Right Section: Patient Search & Auth */}
+        {/* Right Section: User & Auth */}
         <div className="flex items-center gap-3">
-          <div className="relative hidden md:block w-48 lg:w-56">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search patient / EHR..."
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-100/80 border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-600 focus:bg-white transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              HIPAA Ready
-            </span>
-
-            {isAuthenticated ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700 hidden xl:inline">
-                  {user?.firstName ? `${user.firstName} ${user.lastName}` : 'Dr. Practitioner'}
-                </span>
-                <button
-                  onClick={logout}
-                  className="text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors px-2 py-1"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <Link href="/login" className="btn-teal text-xs py-1.5 px-3">
-                Sign In
-              </Link>
-            )}
-          </div>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-semibold text-slate-700 hidden sm:inline">
+                {user?.firstName ? `${user.firstName} ${user.lastName}` : 'Dr. Practitioner'}
+              </span>
+              <button
+                onClick={logout}
+                className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-slate-200"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <Link href="/login" className="btn-teal text-xs py-1.5 px-3">
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
 

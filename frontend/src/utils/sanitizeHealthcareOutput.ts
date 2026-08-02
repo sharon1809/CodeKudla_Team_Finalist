@@ -184,29 +184,34 @@ function parseStructuredBlocks(text: string): SanitizedBlock[] {
       continue;
     }
 
-    // Bold standalone section titles (e.g. "**DIAGNOSIS & IMPRESSION:**")
-    if (/^\*\*[^*]+:\*\*\s*$/.test(line) || /^[A-Z\s]{4,}:\s*$/.test(line)) {
+    // Bold standalone section titles (e.g. "**DIAGNOSIS & IMPRESSION:**" or "**1. Patient Summary**")
+    const standaloneBoldMatch = line.match(/^(?:(?:[*\-•]|\d+\.)\s+)?\*\*([^*]+)\*\*\s*:?\s*$/);
+    if (standaloneBoldMatch) {
       flushList();
       flushParagraph();
       blocks.push({
         type: 'header',
         level: 3,
-        title: line.replace(/\*\*/g, '').replace(/:$/, '').trim(),
+        title: standaloneBoldMatch[1].trim(),
       });
       continue;
     }
 
-    // Bullet points (*, -, •, 1., 2.)
-    const bulletMatch = line.match(/^([*\-•]|\d+\.)\s+(.+)$/);
-    if (bulletMatch) {
+    if (/^[A-Z\s]{4,}:\s*$/.test(line)) {
+      flushList();
       flushParagraph();
-      currentList.push(bulletMatch[2].trim());
+      blocks.push({
+        type: 'header',
+        level: 3,
+        title: line.replace(/:$/, '').trim(),
+      });
       continue;
     }
 
     // Key-Value pairs (e.g. "**Patient Name:** John Doe" or "Hemoglobin: 14.2 g/dL")
-    const kvMatch = line.match(/^(?:\*\*)?([A-Za-z0-9\s/_-]{2,30})(?:\*\*)?:\s*(.+)$/);
-    if (kvMatch && !bulletMatch) {
+    // Allow optional leading bullet point or number
+    const kvMatch = line.match(/^(?:(?:[*\-•]|\d+\.)\s+)?(?:\*\*)?([A-Za-z0-9\s/_-]{2,40})(?:\*\*)?:\s*(.+)$/);
+    if (kvMatch) {
       // Check if value is short enough to be a KV pair vs a full paragraph
       const key = kvMatch[1].replace(/\*\*/g, '').trim();
       const val = kvMatch[2].trim();
@@ -220,6 +225,14 @@ function parseStructuredBlocks(text: string): SanitizedBlock[] {
         });
         continue;
       }
+    }
+
+    // Bullet points (*, -, •, 1., 2.)
+    const bulletMatch = line.match(/^([*\-•]|\d+\.)\s+(.+)$/);
+    if (bulletMatch) {
+      flushParagraph();
+      currentList.push(bulletMatch[2].trim());
+      continue;
     }
 
     // Callout boxes (e.g., Note:, Warning:, Critical:)

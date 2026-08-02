@@ -15,10 +15,16 @@ import {
   Trash2,
   Phone,
   FileText,
-  AlertTriangle,
   CheckCircle2,
+  AlertTriangle,
+  Pill,
+  FileImage,
+  ArrowLeft,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
+import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
 
 export default function PatientsPage() {
   const [patients, setPatients] = useState<any[]>([]);
@@ -26,6 +32,12 @@ export default function PatientsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Patient Timeline State
+  const [selectedTimelinePatient, setSelectedTimelinePatient] = useState<any>(null);
+  const [timelineData, setTimelineData] = useState<any>(null);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [activeTab, setActiveTab] = useState<"safety" | "xray" | "reports">("safety");
 
   const initialFormState = {
     _id: "",
@@ -54,6 +66,19 @@ export default function PatientsPage() {
       toast.error("Failed to load patients directory");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenTimeline = async (patient: any) => {
+    setSelectedTimelinePatient(patient);
+    setLoadingTimeline(true);
+    try {
+      const res = await api.get(`/patients/${patient._id}/timeline`);
+      setTimelineData(res.data);
+    } catch (err) {
+      toast.error("Failed to fetch patient EHR timeline");
+    } finally {
+      setLoadingTimeline(false);
     }
   };
 
@@ -153,7 +178,7 @@ export default function PatientsPage() {
             </p>
           </div>
 
-          {!isCreating && !isEditing && (
+          {!isCreating && !isEditing && !selectedTimelinePatient && (
             <button
               onClick={() => {
                 setFormData(initialFormState);
@@ -168,7 +193,7 @@ export default function PatientsPage() {
         </div>
 
         {/* Loading State */}
-        {loading && !isCreating && !isEditing ? (
+        {loading && !isCreating && !isEditing && !selectedTimelinePatient ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 animate-spin text-teal-600 mb-3" />
             <p className="text-xs text-slate-500 font-semibold">Loading patient directory...</p>
@@ -324,8 +349,204 @@ export default function PatientsPage() {
               </div>
             )}
 
+            {/* Patient EHR Timeline View */}
+            {selectedTimelinePatient && !isCreating && !isEditing && (
+              <div className="space-y-6">
+                <button
+                  onClick={() => {
+                    setSelectedTimelinePatient(null);
+                    setTimelineData(null);
+                  }}
+                  className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-teal-700 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to Patient Directory
+                </button>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  {/* Patient Profile Header */}
+                  <div className="bg-slate-50 p-6 border-b border-slate-200">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-lg border border-teal-200">
+                            {selectedTimelinePatient.name?.[0] || "P"}
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                              {selectedTimelinePatient.name}
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                                {selectedTimelinePatient.age} yrs • {selectedTimelinePatient.gender}
+                              </span>
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Patient ID: <code className="font-mono text-slate-700">{selectedTimelinePatient._id}</code>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedTimelinePatient.contactNumber && (
+                        <div className="flex items-center gap-2 text-xs text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+                          <Phone className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{selectedTimelinePatient.contactNumber}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Allergies & Medical History Badges */}
+                    <div className="mt-4 pt-4 border-t border-slate-200/80 flex flex-wrap gap-4 text-xs">
+                      {selectedTimelinePatient.allergies?.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-rose-900 bg-rose-50 px-3 py-1 rounded-xl border border-rose-200">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span className="font-bold uppercase text-[10px]">Allergies:</span>
+                          <span>{Array.isArray(selectedTimelinePatient.allergies) ? selectedTimelinePatient.allergies.join(", ") : selectedTimelinePatient.allergies}</span>
+                        </div>
+                      )}
+
+                      {selectedTimelinePatient.medicalHistory?.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-slate-700 bg-white px-3 py-1 rounded-xl border border-slate-200">
+                          <Activity className="w-3.5 h-3.5 text-teal-600" />
+                          <span className="font-bold uppercase text-[10px]">History:</span>
+                          <span>{Array.isArray(selectedTimelinePatient.medicalHistory) ? selectedTimelinePatient.medicalHistory.join(", ") : selectedTimelinePatient.medicalHistory}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline Tabs */}
+                  <div className="border-b border-slate-200 bg-white px-6 flex gap-6">
+                    <button
+                      onClick={() => setActiveTab("safety")}
+                      className={`py-3.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors ${
+                        activeTab === "safety"
+                          ? "border-teal-600 text-teal-700"
+                          : "border-transparent text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      <Pill className="w-4 h-4" />
+                      <span>Drug Safety Checks ({timelineData?.safetyReports?.length || 0})</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab("xray")}
+                      className={`py-3.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors ${
+                        activeTab === "xray"
+                          ? "border-teal-600 text-teal-700"
+                          : "border-transparent text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      <FileImage className="w-4 h-4" />
+                      <span>Radiology X-Rays ({timelineData?.xrayStudies?.length || 0})</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab("reports")}
+                      className={`py-3.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors ${
+                        activeTab === "reports"
+                          ? "border-teal-600 text-teal-700"
+                          : "border-transparent text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Clinical Condition Reports ({timelineData?.patientReports?.length || 0})</span>
+                    </button>
+                  </div>
+
+                  {/* Tab Body */}
+                  <div className="p-6">
+                    {loadingTimeline ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-teal-600 mb-2" />
+                        <span className="text-xs text-slate-500 font-semibold">Querying MongoDB EHR records...</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Tab 1: Drug Safety Checks */}
+                        {activeTab === "safety" && (
+                          <div className="space-y-4">
+                            {!timelineData?.safetyReports || timelineData.safetyReports.length === 0 ? (
+                              <div className="text-center py-12 text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                                No medication safety screenings recorded for this patient.
+                              </div>
+                            ) : (
+                              timelineData.safetyReports.map((report: any) => (
+                                <div key={report._id} className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Pill className="w-4 h-4 text-teal-600" />
+                                      <span className="text-sm font-bold text-slate-900">{report.drugName}</span>
+                                    </div>
+                                    <span className="text-xs text-slate-400 font-medium">
+                                      {new Date(report.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <SanitizedMedicalContent content={report.report || report.message} badgeLabel="FDA/ICMR Screened" />
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tab 2: Radiology X-Rays */}
+                        {activeTab === "xray" && (
+                          <div className="space-y-4">
+                            {!timelineData?.xrayStudies || timelineData.xrayStudies.length === 0 ? (
+                              <div className="text-center py-12 text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                                No radiology X-ray scans logged for this patient.
+                              </div>
+                            ) : (
+                              timelineData.xrayStudies.map((item: any) => (
+                                <div key={item.study?._id} className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="text-sm font-bold text-slate-900">{item.study?.studyType} ({item.study?.modality})</span>
+                                      <span className="text-xs text-slate-500 block">{new Date(item.study?.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <span className="badge-clinical badge-teal">Status: {item.study?.status}</span>
+                                  </div>
+                                  <SanitizedMedicalContent content={item.aiReport?.generatedReport} badgeLabel="Radiology AI Report" />
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tab 3: Clinical Condition Reports */}
+                        {activeTab === "reports" && (
+                          <div className="space-y-4">
+                            {!timelineData?.patientReports || timelineData.patientReports.length === 0 ? (
+                              <div className="text-center py-12 text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                                No condition summary reports generated for this patient.
+                              </div>
+                            ) : (
+                              timelineData.patientReports.map((rep: any) => (
+                                <div key={rep._id} className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-slate-900">Condition: {rep.condition}</span>
+                                    <span className="text-xs text-slate-400 font-medium">
+                                      {new Date(rep.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  {rep.simpleSummary && (
+                                    <p className="text-xs text-slate-700 leading-relaxed font-medium bg-white p-3 rounded-lg border border-slate-200">
+                                      {rep.simpleSummary}
+                                    </p>
+                                  )}
+                                  <SanitizedMedicalContent content={rep.cures || rep.dietAndLifestyle} badgeLabel="Treatment Guidance" />
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Patients Grid */}
-            {!isCreating && !isEditing && (
+            {!isCreating && !isEditing && !selectedTimelinePatient && (
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <input
@@ -399,8 +620,11 @@ export default function PatientsPage() {
                           )}
                         </div>
 
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-700">
-                          <span>View EHR History</span>
+                        <div
+                          onClick={() => handleOpenTimeline(patient)}
+                          className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-700 cursor-pointer hover:text-teal-900"
+                        >
+                          <span>View Detailed EHR History</span>
                           <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                         </div>
                       </div>
