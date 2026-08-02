@@ -7,23 +7,25 @@ import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { z } from 'zod';
 import { VectorMatch, IMessage, ICitation } from '../types';
 import { queryDocumentChunks } from './pgvectorService';
+import { getOpenRouterApiKeys, getGeminiApiKeys, executeWithFallback } from './apiKeyManager';
 
 // ─── Custom OpenRouter Embeddings Client ─────────────────────────────────────
 export class OpenRouterEmbeddings extends Embeddings {
   apiKey: string;
   modelName: string;
 
-  constructor(fields: { apiKey: string; modelName?: string } & EmbeddingsParams) {
+  constructor(fields: { apiKey?: string; modelName?: string } & EmbeddingsParams) {
     super(fields ?? {});
-    this.apiKey = fields.apiKey;
+    const keys = getOpenRouterApiKeys();
+    this.apiKey = fields.apiKey || keys[0] || '';
     this.modelName = fields.modelName || 'nvidia/nemotron-3-embed-1b:free';
   }
 
-  private async _embed(input: string | string[]): Promise<number[][]> {
+  private async _embedSingleKey(apiKey: string, input: string | string[]): Promise<number[][]> {
     const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -46,6 +48,10 @@ export class OpenRouterEmbeddings extends Embeddings {
     return sortedData.map((d) => d.embedding);
   }
 
+  private async _embed(input: string | string[]): Promise<number[][]> {
+    return executeWithFallback('openrouter', (key) => this._embedSingleKey(key, input));
+  }
+
   async embedDocuments(documents: string[]): Promise<number[][]> {
     if (documents.length === 0) return [];
     return this._embed(documents);
@@ -62,40 +68,47 @@ let embeddingModel: any = null;
 
 const getEmbeddingModel = (): any => {
   if (!embeddingModel) {
-    const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
-    const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
-    
-    if (hasOpenRouterKey) {
+    const openRouterKeys = getOpenRouterApiKeys();
+    const geminiKeys = getGeminiApiKeys();
+
+    if (openRouterKeys.length > 0) {
       embeddingModel = new OpenRouterEmbeddings({
-        apiKey: process.env.OPENROUTER_API_KEY as string,
+        apiKey: openRouterKeys[0],
         modelName: process.env.OPENROUTER_EMBEDDING_MODEL || 'nvidia/nemotron-3-embed-1b:free',
       });
-      console.log('🧠 Initialized OpenRouter Embeddings');
-    }else {
-      throw new Error('No valid API key configured for embeddings (neither OPENROUTER_API_KEY nor GEMINI_API_KEY was found).');
+      console.log(`🧠 Initialized OpenRouter Embeddings (${openRouterKeys.length} API keys in pool)`);
+    } else if (geminiKeys.length > 0) {
+      embeddingModel = new GoogleGenerativeAIEmbeddings({
+        apiKey: geminiKeys[0],
+        modelName: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004',
+      });
+      console.log(`🧠 Initialized Google Gemini Embeddings (${geminiKeys.length} API keys in pool)`);
+    } else {
+      throw new Error('No valid API key configured for embeddings (check OPENROUTER_API_KEYS or GEMINI_API_KEYS in .env).');
     }
   }
   return embeddingModel;
 };
 
 /**
- * Returns either Cerebras, OpenRouter (Gemini), or direct Google Gemini as the LLM provider.
+ * Returns either Cerebras, OpenRouter, or direct Google Gemini as the LLM provider.
  */
 const getLLMModel = (temperature = 0.2): any => {
   const provider = (process.env.LLM_PROVIDER || '').toLowerCase();
+  const openRouterKeys = getOpenRouterApiKeys();
+  const geminiKeys = getGeminiApiKeys();
   const hasCerebrasKey = !!process.env.CEREBRAS_API_KEY && process.env.CEREBRAS_API_KEY !== 'your_cerebras_api_key_here';
-  const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
 
-  if (provider === 'openrouter' && hasOpenRouterKey) {
+  if (provider === 'openrouter' && openRouterKeys.length > 0) {
     return new ChatOpenAI({
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: openRouterKeys[0],
       configuration: {
         baseURL: 'https://openrouter.ai/api/v1',
       },
       model: process.env.OPENROUTER_CHAT_MODEL || 'google/gemini-2.5-flash',
       temperature,
       maxTokens: 4096,
-      maxRetries: 0, // Disable automatic retries on rate limit (429) errors
+      maxRetries: 0,
     });
   }
 
@@ -111,10 +124,9 @@ const getLLMModel = (temperature = 0.2): any => {
     });
   }
 
-  // Fallback to OpenRouter if API key is present
-  if (hasOpenRouterKey) {
+  if (openRouterKeys.length > 0) {
     return new ChatOpenAI({
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: openRouterKeys[0],
       configuration: {
         baseURL: 'https://openrouter.ai/api/v1',
       },
@@ -126,7 +138,7 @@ const getLLMModel = (temperature = 0.2): any => {
   }
 
   return new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKey: geminiKeys[0] || process.env.GEMINI_API_KEY,
     model: process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash',
     temperature,
     maxRetries: 0,
