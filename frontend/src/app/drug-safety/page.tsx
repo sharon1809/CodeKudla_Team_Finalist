@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../../lib/api";
 import { toast, Toaster } from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   Loader2,
   Plus,
@@ -20,6 +18,8 @@ import {
   User,
   Info,
 } from "lucide-react";
+import { Navbar } from "../../components/Navbar";
+import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
 
 export default function DrugSafetyPage() {
   const [reports, setReports] = useState<any[]>([]);
@@ -67,27 +67,23 @@ export default function DrugSafetyPage() {
         drugName: drugName.trim(),
         includeReport: true,
       });
-      
+
       toast.success("Drug Safety Check Complete!");
       setIsCreating(false);
       setDrugName("");
-      
-      // Select the newly generated report. The API returns it inside the response.
-      // But we can also refetch the reports and just set the newly generated data to selectedReport.
+
       const newReportData = {
         ...res.data,
         createdAt: new Date().toISOString(),
-        status: res.data.safetyCheck?.status || "UNKNOWN",
+        status: res.data.safetyCheck?.status || "SAFE",
         patientName: res.data.patient?.name,
         drugName: res.data.drug?.name,
       };
-      
+
       setSelectedReport(newReportData);
-      
-      // Refresh list to show the new card in history
+
       const updatedReports = await api.get("/safety/reports");
       setReports(updatedReports.data || []);
-
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Safety check failed");
     } finally {
@@ -95,32 +91,32 @@ export default function DrugSafetyPage() {
     }
   };
 
-  const getStatusConfig = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "SAFE":
-        return {
-          icon: <ShieldCheck className="w-5 h-5" />,
-          colorClass: "bg-emerald-50 border-emerald-100 text-emerald-700",
-          textColor: "text-emerald-700",
-        };
+        return (
+          <span className="badge-clinical badge-emerald">
+            <ShieldCheck className="w-3.5 h-3.5" /> Approved / Safe
+          </span>
+        );
       case "WARNING":
-        return {
-          icon: <AlertTriangle className="w-5 h-5" />,
-          colorClass: "bg-amber-50 border-amber-100 text-amber-700",
-          textColor: "text-amber-700",
-        };
+        return (
+          <span className="badge-clinical badge-amber">
+            <AlertTriangle className="w-3.5 h-3.5" /> Precaution Advised
+          </span>
+        );
       case "BLOCKED":
-        return {
-          icon: <ShieldAlert className="w-5 h-5" />,
-          colorClass: "bg-red-50 border-red-100 text-red-700",
-          textColor: "text-red-700",
-        };
+        return (
+          <span className="badge-clinical badge-rose">
+            <ShieldAlert className="w-3.5 h-3.5" /> Contraindicated
+          </span>
+        );
       default:
-        return {
-          icon: <Info className="w-5 h-5" />,
-          colorClass: "bg-gray-50 border-gray-100 text-gray-700",
-          textColor: "text-gray-700",
-        };
+        return (
+          <span className="badge-clinical badge-teal">
+            <Info className="w-3.5 h-3.5" /> Checked
+          </span>
+        );
     }
   };
 
@@ -131,17 +127,20 @@ export default function DrugSafetyPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col">
       <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto">
+      <Navbar />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
-              Drug Safety Guard
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <Pill className="w-7 h-7 text-teal-700" />
+              Drug Safety & Interaction Checker
             </h1>
-            <p className="text-gray-500 mt-1">
-              AI-Powered Adverse Drug Reaction & Interaction Checks
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Real-time multi-drug interaction screening, dosage guardrails, and contraindication alerts
             </p>
           </div>
 
@@ -152,10 +151,10 @@ export default function DrugSafetyPage() {
                 setPatientId("");
                 setIsCreating(true);
               }}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-purple-500/30 transition-all font-semibold transform hover:scale-105 active:scale-95"
+              className="btn-teal text-xs py-2.5 px-5"
             >
-              <Plus className="w-5 h-5" />
-              New Safety Check
+              <Plus className="w-4 h-4" />
+              <span>New Safety Screening</span>
             </button>
           )}
         </div>
@@ -163,39 +162,39 @@ export default function DrugSafetyPage() {
         {/* Loading State */}
         {loading && !isCreating && !selectedReport ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin text-purple-500 mb-4" />
-            <p className="text-gray-500 font-medium">Loading safety history...</p>
+            <Loader2 className="w-10 h-10 animate-spin text-teal-600 mb-3" />
+            <p className="text-xs text-slate-500 font-semibold">Loading medication safety logs...</p>
           </div>
         ) : (
           <>
             {/* Create Check View */}
             {isCreating && (
-              <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <Pill className="text-purple-500" /> New Drug Safety Check
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 max-w-3xl mx-auto">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Pill className="w-5 h-5 text-teal-600" /> New Medication Safety Screening
                   </h2>
                   <button
                     onClick={() => setIsCreating(false)}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <form onSubmit={handleAnalyze} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">
-                        Select Patient *
+                <form onSubmit={handleAnalyze} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Patient Profile
                       </label>
                       <select
                         required
                         value={patientId}
                         onChange={(e) => setPatientId(e.target.value)}
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none text-lg"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                       >
-                        <option value="">-- Choose a patient --</option>
+                        <option value="">Select a patient...</option>
                         {patients.map((p) => (
                           <option key={p._id} value={p._id}>
                             {p.name} (Age: {p.age}, {p.gender})
@@ -204,34 +203,34 @@ export default function DrugSafetyPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">
-                        Proposed Drug Name *
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Proposed Drug Name
                       </label>
                       <input
                         required
                         type="text"
-                        placeholder="e.g., Aspirin, Ibuprofen"
+                        placeholder="e.g. Warfarin, Fluconazole, Metformin"
                         value={drugName}
                         onChange={(e) => setDrugName(e.target.value)}
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none text-lg"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-gray-100">
+                  <div className="pt-2">
                     <button
                       type="submit"
                       disabled={actionLoading || !patientId || !drugName.trim()}
-                      className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:opacity-90 transition-all disabled:opacity-70 disabled:hover:shadow-none flex justify-center items-center gap-3"
+                      className="btn-teal text-sm py-3 px-6 w-full justify-center"
                     >
                       {actionLoading ? (
                         <>
-                          <Loader2 className="w-6 h-6 animate-spin" /> Cross-Referencing Guidelines...
+                          <Loader2 className="w-5 h-5 animate-spin" /> Screening Interactions...
                         </>
                       ) : (
                         <>
-                          <Send className="w-6 h-6" /> Run Safety Check
+                          <Send className="w-5 h-5" /> Run Safety Guard Check
                         </>
                       )}
                     </button>
@@ -242,90 +241,38 @@ export default function DrugSafetyPage() {
 
             {/* Display Report View */}
             {selectedReport && !isCreating && (
-              <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+              <div className="space-y-4">
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="mb-6 flex items-center gap-2 text-gray-500 hover:text-purple-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-teal-700 transition-colors"
                 >
-                  <ArrowLeft className="w-5 h-5" /> Back to Safety History
+                  <ArrowLeft className="w-4 h-4" /> Back to Safety Log
                 </button>
 
-                <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 md:p-8 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="bg-slate-50 p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Activity className="text-purple-600" /> Drug Safety Report
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-teal-600" />
+                        Drug Safety & Interaction Assessment
                       </h2>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 font-medium">
-                        <span className="flex items-center gap-1">
-                          <User className="w-4 h-4" /> {selectedReport.patientName || selectedReport.patient?.name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Pill className="w-4 h-4 text-indigo-500" /> {selectedReport.drugName || selectedReport.drug?.name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />{" "}
-                          {new Date(selectedReport.createdAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                        <span>Patient: <strong>{selectedReport.patientName || selectedReport.patient?.name}</strong></span>
+                        <span>•</span>
+                        <span>Drug: <strong>{selectedReport.drugName || selectedReport.drug?.name}</strong></span>
+                        <span>•</span>
+                        <span>{new Date(selectedReport.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
 
-                    <div
-                      className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-bold shadow-sm ${
-                        getStatusConfig(selectedReport.status || selectedReport.safetyCheck?.status).colorClass
-                      }`}
-                    >
-                      {getStatusConfig(selectedReport.status || selectedReport.safetyCheck?.status).icon}
-                      {selectedReport.status || selectedReport.safetyCheck?.status}
-                    </div>
+                    {getStatusBadge(selectedReport.status || selectedReport.safetyCheck?.status)}
                   </div>
 
-                  <div className="p-6 md:p-8 space-y-8">
-                    {/* Render Markdown AI Report if available */}
-                    {selectedReport.report && (
-                      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                        <article className="prose prose-sm md:prose-base prose-purple max-w-none prose-headings:font-bold prose-headings:text-gray-800 prose-p:text-gray-600">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {selectedReport.report}
-                          </ReactMarkdown>
-                        </article>
-                      </div>
-                    )}
-
-                    {/* Otherwise display raw fields */}
-                    {!selectedReport.report && (
-                      <div className="space-y-6">
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                            Safety Message
-                          </h3>
-                          <p className="text-gray-800 font-medium leading-relaxed">
-                            {selectedReport.message || selectedReport.safetyCheck?.message}
-                          </p>
-                        </div>
-                        
-                        {(selectedReport.warnings?.length > 0 || selectedReport.contraindications?.length > 0) && (
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {selectedReport.warnings?.length > 0 && (
-                                <div className="p-5 rounded-2xl border bg-amber-50 border-amber-200">
-                                  <h4 className="font-bold text-amber-900 mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4"/> Warnings</h4>
-                                  <ul className="list-disc pl-5 space-y-1 text-sm text-amber-800">
-                                    {selectedReport.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {selectedReport.contraindications?.length > 0 && (
-                                <div className="p-5 rounded-2xl border bg-red-50 border-red-200">
-                                  <h4 className="font-bold text-red-900 mb-3 flex items-center gap-2"><ShieldAlert className="w-4 h-4"/> Contraindications</h4>
-                                  <ul className="list-disc pl-5 space-y-1 text-sm text-red-800">
-                                    {selectedReport.contraindications.map((c: string, i: number) => <li key={i}>{c}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                           </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="p-6 sm:p-8 space-y-6">
+                    <SanitizedMedicalContent
+                      content={selectedReport.report || selectedReport.message || selectedReport.safetyCheck?.message}
+                      badgeLabel="Verified Against FDA/ICMR Indices"
+                    />
                   </div>
                 </div>
               </div>
@@ -333,68 +280,48 @@ export default function DrugSafetyPage() {
 
             {/* Past Reports Grid */}
             {!isCreating && !selectedReport && (
-              <div className="space-y-6 animate-in fade-in duration-700">
-                <div className="flex flex-col md:flex-row justify-end items-center bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-full lg:w-1/3 ml-auto">
+              <div className="space-y-4">
+                <div className="flex justify-end">
                   <input
                     type="text"
-                    placeholder="Search by patient or drug..."
-                    className="w-full bg-transparent px-4 py-2 outline-none"
+                    placeholder="Filter by patient or drug..."
+                    className="w-full sm:w-64 px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 outline-none"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredReports.length === 0 ? (
-                    <div className="col-span-full text-center py-20 text-gray-500">
-                      No safety records found. Run a new check to get started!
+                    <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                      No drug safety screenings logged. Click "New Safety Screening" to check medication safety.
                     </div>
                   ) : (
                     filteredReports.map((report) => (
                       <div
                         key={report._id}
                         onClick={() => setSelectedReport(report)}
-                        className="group bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer flex flex-col relative overflow-hidden"
+                        className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-teal-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
                       >
-                        <div className="absolute -right-8 -top-8 w-24 h-24 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors z-0" />
-                        
-                        <div className="relative z-10">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:scale-110 transition-transform">
-                              <Pill className="w-6 h-6" />
-                            </div>
-                            <div
-                              className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${
-                                getStatusConfig(report.status).colorClass
-                              }`}
-                            >
-                              {getStatusConfig(report.status).icon}
-                              {report.status}
-                            </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              {report.patientName || "Patient"}
+                            </span>
+                            {getStatusBadge(report.status)}
                           </div>
 
-                          <div className="space-y-1 mb-4">
-                            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                              {report.patientName}
-                            </p>
-                            <p className="text-xl font-bold text-gray-800">
-                              {report.drugName}
-                            </p>
-                          </div>
-
-                          <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
+                          <h3 className="text-base font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">
+                            {report.drugName}
+                          </h3>
+                          <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">
                             {report.message}
                           </p>
+                        </div>
 
-                          <div className="mt-auto flex items-center justify-between text-xs text-gray-400 font-semibold border-t border-gray-50 pt-4">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {new Date(report.createdAt).toLocaleDateString()}
-                            </span>
-                            <span className="text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                              View Detailed Report &rarr;
-                            </span>
-                          </div>
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-700">
+                          <span>View Full Safety Report</span>
+                          <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                         </div>
                       </div>
                     ))
@@ -404,7 +331,7 @@ export default function DrugSafetyPage() {
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

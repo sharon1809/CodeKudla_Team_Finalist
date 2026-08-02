@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Send, Stethoscope, MessageSquare, Quote, BookOpen, AlertCircle, FlaskConical, Mic, MicOff, Download } from 'lucide-react';
 import { api } from '../lib/api';
+import { SanitizedMedicalContent } from './SanitizedMedicalContent';
 
 interface Citation {
   text: string;
@@ -341,10 +342,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
                     {isUser ? 'Doctor' : 'MedSynexa AI'}
                   </div>
 
-                  <div className={`prose prose-sm max-w-none text-xs leading-relaxed ${isUser ? 'text-white' : 'text-gray-700'}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
+                  <div className={`prose prose-sm max-w-none text-xs leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
+                    {isUser ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <SanitizedMedicalContent content={msg.content} badgeLabel={undefined} />
+                    )}
                   </div>
                 </div>
 

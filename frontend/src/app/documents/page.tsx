@@ -10,11 +10,13 @@ import {
   FileText,
   BookOpen,
   Trash2,
-  Calendar,
   MessageSquare,
   X,
+  FileSearch,
 } from "lucide-react";
+import { Navbar } from "../../components/Navbar";
 import { ChatInterface } from "../../components/ChatInterface";
+import { DocumentViewer } from "../../components/DocumentViewer";
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -22,7 +24,9 @@ export default function DocumentsPage() {
   
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'viewer' | 'chat'>('viewer');
   
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [activeChat, setActiveChat] = useState<any>(null);
   
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -39,8 +43,12 @@ export default function DocumentsPage() {
         api.get("/documents"),
         api.get("/chats"),
       ]);
-      setDocuments(docsRes.data.documents || []);
+      const docs = docsRes.data.documents || [];
+      setDocuments(docs);
       setChats(chatsRes.data.chats || []);
+      if (docs.length > 0) {
+        setSelectedDoc(docs[0]);
+      }
     } catch (err) {
       toast.error("Failed to load clinical library data");
     } finally {
@@ -67,7 +75,9 @@ export default function DocumentsPage() {
       });
       toast.success("Document uploaded & processed successfully!");
       const docsRes = await api.get("/documents");
-      setDocuments(docsRes.data.documents || []);
+      const docs = docsRes.data.documents || [];
+      setDocuments(docs);
+      if (docs.length > 0) setSelectedDoc(docs[0]);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to upload document");
     } finally {
@@ -88,12 +98,11 @@ export default function DocumentsPage() {
       }
 
       const res = await api.post("/chats", payload);
-      
       const chatRes = await api.get(`/chats/${res.data.chat._id}`);
       setActiveChat(chatRes.data.chat);
       setIsNewChatModalOpen(false);
+      setActiveTab('chat');
 
-      // Refresh chats list
       const updatedChatsRes = await api.get("/chats");
       setChats(updatedChatsRes.data.chats || []);
     } catch (err) {
@@ -128,52 +137,55 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col h-screen overflow-hidden">
       <Toaster position="top-right" />
+      <Navbar />
 
       {/* New Chat Modal */}
       {isNewChatModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800">
-                <MessageSquare className="w-5 h-5 text-blue-600" /> Start New Chat
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-teal-600" /> Start RAG Query Session
               </h3>
-              <button onClick={() => setIsNewChatModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
+              <button onClick={() => setIsNewChatModalOpen(false)} className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <button 
                 disabled={isCreatingChat}
                 onClick={() => startNewChat()}
-                className="w-full text-left p-4 rounded-xl border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors flex flex-col"
+                className="w-full text-left p-4 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100/80 transition-colors flex flex-col"
               >
-                <span className="font-bold text-blue-900 flex items-center gap-2"><BookOpen className="w-4 h-4"/> Global Library Search</span>
-                <span className="text-xs text-blue-700 mt-1">Chat and search across ALL uploaded documents simultaneously.</span>
+                <span className="font-bold text-teal-900 flex items-center gap-2 text-xs sm:text-sm">
+                  <BookOpen className="w-4 h-4 text-teal-700"/> Global Medical Search
+                </span>
+                <span className="text-xs text-teal-700 mt-1">Chat and search across ALL uploaded documents simultaneously.</span>
               </button>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500 font-medium">Or select a specific document</span></div>
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400"><span className="px-2 bg-white">Or Select Specific Document</span></div>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {documents.length === 0 ? (
-                  <p className="text-center text-sm text-gray-500 py-4">No documents uploaded yet.</p>
+                  <p className="text-center text-xs text-slate-400 py-4">No documents uploaded yet.</p>
                 ) : (
                   documents.map(doc => (
                     <button
                       key={doc._id}
                       disabled={isCreatingChat}
                       onClick={() => startNewChat(doc._id, doc.filename)}
-                      className="w-full text-left p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                      className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-slate-50 transition-colors flex items-center gap-3"
                     >
-                      <FileText className="w-5 h-5 text-gray-400 shrink-0" />
+                      <FileText className="w-4 h-4 text-teal-600 shrink-0" />
                       <div className="truncate">
-                        <p className="font-semibold text-gray-800 text-sm truncate">{doc.filename}</p>
-                        <p className="text-[10px] text-gray-500">{new Date(doc.uploadDate).toLocaleDateString()}</p>
+                        <p className="font-semibold text-slate-900 text-xs truncate">{doc.filename}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(doc.uploadDate).toLocaleDateString()}</p>
                       </div>
                     </button>
                   ))
@@ -184,106 +196,121 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Left Sidebar - Chat History */}
-      <div className="w-1/3 max-w-sm bg-white border-r border-gray-100 flex flex-col h-full shrink-0 shadow-sm z-10 relative">
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-600" />
-              Library Chats
-            </h1>
-            <label className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg cursor-pointer transition-colors" title="Upload new document">
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-              <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
-            </label>
-          </div>
-
-          <button 
-            onClick={() => setIsNewChatModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-          >
-            <Plus className="w-4 h-4" /> New Chat
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#FAFAFA]">
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+      {/* Main Workspace Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar */}
+        <div className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
+          <div className="p-4 border-b border-slate-200 space-y-3 bg-slate-50/50">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <FileSearch className="w-4 h-4 text-teal-600" /> Clinical Documents
+              </h2>
+              <label className="p-1.5 bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 rounded-lg cursor-pointer transition-colors" title="Upload new document">
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
+              </label>
             </div>
-          ) : chats.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 font-medium text-sm">
-              No chats found. Create a new chat to begin querying documents.
+
+            <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs font-semibold">
+              <button
+                onClick={() => setActiveTab('viewer')}
+                className={`flex-1 py-1.5 rounded-md transition-all ${activeTab === 'viewer' ? 'bg-white shadow-sm text-teal-800' : 'text-slate-500'}`}
+              >
+                Documents ({documents.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 py-1.5 rounded-md transition-all ${activeTab === 'chat' ? 'bg-white shadow-sm text-teal-800' : 'text-slate-500'}`}
+              >
+                Chats ({chats.length})
+              </button>
             </div>
-          ) : (
-            chats.map((chat) => {
-              const isActive = activeChat?._id === chat._id;
-              const docName = chat.document?.filename || "Global Library";
-              
-              return (
-                <div
-                  key={chat._id}
-                  className={`group relative p-3.5 rounded-2xl border transition-all cursor-pointer overflow-hidden flex flex-col ${
-                    isActive
-                      ? "bg-blue-50 border-blue-200 shadow-sm"
-                      : "bg-white border-transparent hover:border-gray-200 hover:shadow-sm"
-                  }`}
-                  onClick={() => !isActive && refreshChat(chat._id)}
-                >
-                  <div className="flex justify-between items-start mb-1.5 relative z-10">
-                    <div className={`flex items-center gap-2 font-bold truncate pr-8 ${isActive ? 'text-blue-700' : 'text-gray-800'}`}>
-                      <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
-                      <span className="truncate text-sm">{chat.title}</span>
-                    </div>
-                  </div>
 
-                  <div className="text-[11px] font-medium text-gray-500 flex items-center justify-between relative z-10">
-                    <span className="flex items-center gap-1 truncate max-w-[60%]">
-                      <FileText className="w-3 h-3" /> {docName}
-                    </span>
-                    <span className="shrink-0">{new Date(chat.updatedAt || chat.createdAt).toLocaleDateString()}</span>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteChat(chat._id);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-gray-100 text-gray-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-500 z-20"
-                    title="Delete Chat"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Right Content Area - Chat Interface */}
-      <div className="flex-1 bg-white flex flex-col relative h-full min-w-0">
-        {!activeChat ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gray-50/30">
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 border border-blue-100 shadow-inner">
-              <MessageSquare className="w-8 h-8 text-blue-500 opacity-80" />
-            </div>
-            <h2 className="text-xl font-extrabold text-gray-800 mb-2">
-              Select or Create a Chat
-            </h2>
-            <p className="text-sm text-gray-500 max-w-sm mx-auto font-medium leading-relaxed">
-              Click on an existing chat history on the left, or start a new chat to interrogate your clinical guidelines.
-            </p>
             <button 
               onClick={() => setIsNewChatModalOpen(true)}
-              className="mt-6 flex items-center justify-center gap-2 bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 hover:text-blue-700 py-2.5 px-6 rounded-xl font-bold transition-all shadow-sm"
+              className="w-full btn-teal text-xs py-2 px-3 justify-center"
             >
-              <Plus className="w-4 h-4" /> Start New Chat
+              <Plus className="w-3.5 h-3.5" /> Start RAG Query
             </button>
           </div>
-        ) : (
-          <ChatInterface chat={activeChat} onRefreshChat={refreshChat} />
-        )}
+
+          {/* List Section */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#F8FAFC]">
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+              </div>
+            ) : activeTab === 'viewer' ? (
+              documents.map((doc) => {
+                const isSelected = selectedDoc?._id === doc._id;
+                return (
+                  <div
+                    key={doc._id}
+                    onClick={() => setSelectedDoc(doc)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-teal-50 border-teal-300 text-teal-900 shadow-sm"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-teal-700' : 'text-slate-400'}`} />
+                      <div className="truncate">
+                        <p className="font-semibold text-xs truncate">{doc.filename}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(doc.uploadDate).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              chats.map((chat) => {
+                const isActive = activeChat?._id === chat._id;
+                return (
+                  <div
+                    key={chat._id}
+                    onClick={() => {
+                      refreshChat(chat._id);
+                      setActiveTab('chat');
+                    }}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isActive
+                        ? "bg-teal-50 border-teal-300 text-teal-900 shadow-sm"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <MessageSquare className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                      <span className="text-xs font-semibold truncate">{chat.title}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteChat(chat._id);
+                      }}
+                      className="text-slate-400 hover:text-rose-600 p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Content */}
+        <div className="flex-1 bg-white p-4 sm:p-6 overflow-y-auto">
+          {activeTab === 'viewer' ? (
+            <DocumentViewer
+              document={selectedDoc}
+              onStartChat={(docId) => startNewChat(docId, selectedDoc?.filename)}
+              isCreatingChat={isCreatingChat}
+            />
+          ) : (
+            <ChatInterface chat={activeChat} onRefreshChat={refreshChat} />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -12,12 +12,13 @@ import {
   Users,
   Activity,
   Save,
-  ArrowLeft,
   Trash2,
   Phone,
   FileText,
   AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
+import { Navbar } from "../../components/Navbar";
 
 export default function PatientsPage() {
   const [patients, setPatients] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export default function PatientsPage() {
     try {
       setLoading(true);
       const res = await api.get("/patients");
-      setPatients(res.data);
+      setPatients(res.data || []);
     } catch (err) {
       toast.error("Failed to load patients directory");
     } finally {
@@ -59,9 +60,9 @@ export default function PatientsPage() {
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.age) {
-      return toast.error("Please provide name and age");
+      return toast.error("Please provide patient name and age");
     }
-    
+
     setActionLoading(true);
     try {
       const payload = {
@@ -80,12 +81,12 @@ export default function PatientsPage() {
 
       if (isEditing && formData._id) {
         await api.put(`/patients/${formData._id}`, payload);
-        toast.success("Patient updated successfully");
+        toast.success("Patient record updated successfully");
       } else {
         await api.post("/patients", payload);
         toast.success("Patient registered successfully");
       }
-      
+
       setIsCreating(false);
       setIsEditing(false);
       setFormData(initialFormState);
@@ -99,11 +100,11 @@ export default function PatientsPage() {
 
   const handleDeletePatient = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this patient?")) return;
+    if (!window.confirm("Are you sure you want to delete this patient record?")) return;
 
     try {
       await api.delete(`/patients/${id}`);
-      toast.success("Patient deleted");
+      toast.success("Patient record deleted");
       fetchPatients();
     } catch (error) {
       toast.error("Failed to delete patient");
@@ -118,12 +119,12 @@ export default function PatientsPage() {
       weight: patient.weight ? patient.weight.toString() : "",
       gender: patient.gender || "male",
       contactNumber: patient.contactNumber || "",
-      medicalHistory: Array.isArray(patient.medicalHistory) 
-        ? patient.medicalHistory.join(", ") 
-        : (patient.medicalHistory || ""),
-      allergies: Array.isArray(patient.allergies) 
-        ? patient.allergies.join(", ") 
-        : (patient.allergies || ""),
+      medicalHistory: Array.isArray(patient.medicalHistory)
+        ? patient.medicalHistory.join(", ")
+        : patient.medicalHistory || "",
+      allergies: Array.isArray(patient.allergies)
+        ? patient.allergies.join(", ")
+        : patient.allergies || "",
     });
     setIsEditing(true);
   };
@@ -135,17 +136,20 @@ export default function PatientsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col">
       <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto">
+      <Navbar />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-              Patient Directory
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <Users className="w-7 h-7 text-teal-700" />
+              Patient EHR Directory
             </h1>
-            <p className="text-gray-500 mt-1">
-              Manage patient demographics and clinical records
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Longitudinal clinical encounters, patient histories, and medical allergy records
             </p>
           </div>
 
@@ -155,10 +159,10 @@ export default function PatientsPage() {
                 setFormData(initialFormState);
                 setIsCreating(true);
               }}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all font-semibold transform hover:scale-105 active:scale-95"
+              className="btn-teal text-xs py-2.5 px-5"
             >
-              <Plus className="w-5 h-5" />
-              Register Patient
+              <Plus className="w-4 h-4" />
+              <span>Register Patient</span>
             </button>
           )}
         </div>
@@ -166,18 +170,18 @@ export default function PatientsPage() {
         {/* Loading State */}
         {loading && !isCreating && !isEditing ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-            <p className="text-gray-500 font-medium">Loading directory...</p>
+            <Loader2 className="w-10 h-10 animate-spin text-teal-600 mb-3" />
+            <p className="text-xs text-slate-500 font-semibold">Loading patient directory...</p>
           </div>
         ) : (
           <>
             {/* Create/Edit Form */}
             {(isCreating || isEditing) && (
-              <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <User className="text-blue-500" />{" "}
-                    {isEditing ? "Edit Patient Details" : "Register New Patient"}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6 max-w-3xl mx-auto">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <User className="w-5 h-5 text-teal-600" />
+                    {isEditing ? "Edit Patient EHR Details" : "Register New Patient Record"}
                   </h2>
                   <button
                     onClick={() => {
@@ -185,67 +189,77 @@ export default function PatientsPage() {
                       setIsEditing(false);
                       setFormData(initialFormState);
                     }}
-                    className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <form onSubmit={handleCreateOrUpdate} className="space-y-6 max-w-3xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Full Name *</label>
+                <form onSubmit={handleCreateOrUpdate} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Full Name *
+                      </label>
                       <input
                         required
                         type="text"
-                        placeholder="John Doe"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                        placeholder="e.g. Ramesh Kumar"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Contact Number</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Contact Number
+                      </label>
                       <input
                         type="tel"
-                        placeholder="+1 234 567 890"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                        placeholder="+91 98765 43210"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                         value={formData.contactNumber}
                         onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Age *</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Age (Years) *
+                      </label>
                       <input
                         required
                         type="number"
-                        placeholder="35"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                        placeholder="45"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                         value={formData.age}
                         onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Weight (kg)</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Weight (kg)
+                      </label>
                       <input
                         type="number"
-                        placeholder="70"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                        placeholder="68"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                         value={formData.weight}
                         onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Gender *</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Gender *
+                      </label>
                       <select
                         required
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none"
                         value={formData.gender}
                         onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                       >
@@ -256,50 +270,54 @@ export default function PatientsPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">Medical History (comma-separated)</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Medical History (comma-separated)
+                    </label>
                     <textarea
-                      placeholder="Hypertension, Diabetes Type 2"
+                      placeholder="Hypertension, Type 2 Diabetes, Asthma"
                       rows={2}
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none resize-none"
                       value={formData.medicalHistory}
                       onChange={(e) => setFormData({ ...formData, medicalHistory: e.target.value })}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">Allergies (comma-separated)</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Allergies & Sensitivities
+                    </label>
                     <textarea
-                      placeholder="Penicillin, Peanuts"
+                      placeholder="Penicillin, Sulfa drugs"
                       rows={2}
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:border-teal-600 focus:ring-teal-100 outline-none resize-none"
                       value={formData.allergies}
                       onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
                     />
                   </div>
 
-                  <div className="pt-4 flex justify-end gap-4 border-t border-gray-100 mt-6">
+                  <div className="pt-2 flex justify-end gap-3 border-t border-slate-200">
                     <button
                       type="button"
                       onClick={() => {
                         setIsCreating(false);
                         setIsEditing(false);
                       }}
-                      className="px-6 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                      className="btn-secondary text-xs py-2 px-4"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={actionLoading}
-                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 transition-all disabled:opacity-70 flex items-center gap-3"
+                      className="btn-teal text-xs py-2 px-5"
                     >
                       {actionLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Save className="w-5 h-5" />
+                        <Save className="w-4 h-4" />
                       )}
-                      {isEditing ? "Save Changes" : "Register Patient"}
+                      <span>{isEditing ? "Save Changes" : "Register Patient"}</span>
                     </button>
                   </div>
                 </form>
@@ -308,106 +326,82 @@ export default function PatientsPage() {
 
             {/* Patients Grid */}
             {!isCreating && !isEditing && (
-              <div className="space-y-6 animate-in fade-in duration-700">
-                {/* Search & Filter Bar */}
-                <div className="flex flex-col md:flex-row justify-between items-center bg-white p-2 rounded-2xl shadow-sm border border-gray-100 w-full lg:w-1/3 ml-auto">
+              <div className="space-y-4">
+                <div className="flex justify-end">
                   <input
                     type="text"
                     placeholder="Search patients by name or ID..."
-                    className="w-full bg-transparent px-4 py-2 outline-none"
+                    className="w-full sm:w-64 px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 outline-none"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredPatients.length === 0 ? (
-                    <div className="col-span-full text-center py-20 text-gray-500">
-                      No patients found. Register one to get started!
+                    <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                      No patient records found. Click "Register Patient" to add a new record.
                     </div>
                   ) : (
                     filteredPatients.map((patient) => (
                       <div
                         key={patient._id}
-                        className="group bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-100 transition-all flex flex-col relative overflow-hidden"
+                        className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-teal-300 hover:shadow-md transition-all flex flex-col justify-between group"
                       >
-                        {/* Decoration blob */}
-                        <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-50 rounded-full blur-2xl group-hover:bg-blue-100 transition-colors z-0" />
-                        
-                        <div className="relative z-10 flex flex-col h-full">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center justify-center w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition-transform">
-                              <User className="w-6 h-6" />
-                            </div>
-                            <div className="flex gap-2">
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="badge-clinical badge-teal">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Stable Record
+                            </span>
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditClick(patient);
                                 }}
-                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                title="Edit Patient"
+                                className="p-1 text-slate-400 hover:text-teal-700 transition-colors"
+                                title="Edit Record"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => handleDeletePatient(patient._id, e)}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                title="Delete Patient"
+                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                title="Delete Record"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </div>
 
-                          <h3 className="text-xl font-bold text-gray-800 mb-1 truncate">
+                          <h3 className="text-base font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">
                             {patient.name}
                           </h3>
-                          <div className="text-sm text-gray-500 font-medium mb-4 flex items-center gap-2 flex-wrap">
-                            <span className="bg-gray-100 px-2 py-0.5 rounded-md text-gray-600">ID: {patient._id.slice(-6).toUpperCase()}</span>
+                          <div className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-2">
                             <span>{patient.age} yrs</span>
+                            <span>•</span>
                             <span className="capitalize">{patient.gender}</span>
-                            {patient.weight && <span>• {patient.weight}kg</span>}
+                            {patient.weight && <span>• {patient.weight} kg</span>}
                           </div>
 
-                          <div className="space-y-3 mb-6">
-                            {patient.contactNumber && (
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Phone className="w-4 h-4 text-blue-400" />
-                                {patient.contactNumber}
-                              </div>
-                            )}
+                          {patient.contactNumber && (
+                            <div className="text-xs text-slate-600 flex items-center gap-1.5 mb-3">
+                              <Phone className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{patient.contactNumber}</span>
+                            </div>
+                          )}
 
-                            {(patient.medicalHistory?.length > 0 || patient.allergies?.length > 0) && (
-                              <div className="pt-3 border-t border-gray-50 space-y-2">
-                                {patient.allergies?.length > 0 && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
-                                    <div className="flex flex-wrap gap-1">
-                                      {patient.allergies.map((a: string, i: number) => (
-                                        <span key={i} className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">
-                                          {a}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {patient.medicalHistory?.length > 0 && (
-                                  <div className="flex items-start gap-2 text-sm text-gray-600">
-                                    <FileText className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                                    <span className="truncate">{patient.medicalHistory.join(", ")}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          {patient.allergies?.length > 0 && (
+                            <div className="mb-3 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs">
+                              <span className="font-bold block mb-0.5 text-[10px] uppercase">Allergies</span>
+                              <span>{patient.allergies.join(", ")}</span>
+                            </div>
+                          )}
+                        </div>
 
-                          <div className="mt-auto flex justify-end">
-                            <span className="text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer">
-                              Edit Details <Edit2 className="w-3 h-3" />
-                            </span>
-                          </div>
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-700">
+                          <span>View EHR History</span>
+                          <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                         </div>
                       </div>
                     ))
@@ -417,7 +411,7 @@ export default function PatientsPage() {
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
