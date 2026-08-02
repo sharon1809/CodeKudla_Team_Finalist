@@ -75,10 +75,7 @@ Impression
 ${data.impression.map(i => '- ' + i).join('\n')}
 
 Abnormalities
-${data.abnormalities.length > 0 ? data.abnormalities.map(a => '- ' + a).join('\n') : 'None noted.'}
-
-Urgency: ${data.urgency}
-AI Confidence: ${(data.confidence * 100).toFixed(0)}%`;
+${data.abnormalities.length > 0 ? data.abnormalities.map(a => '- ' + a).join('\n') : 'None noted.'}`;
 };
 
 /**

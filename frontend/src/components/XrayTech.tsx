@@ -5,6 +5,24 @@ import { UploadCloud, CheckCircle, RefreshCcw, FileText, Send, User } from 'luci
 import { api } from '../lib/api';
 import { motion } from 'framer-motion';
 import { toast, Toaster } from 'react-hot-toast';
+import {
+  Box,
+  Typography,
+  Card,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Paper,
+} from '@mui/material';
 
 export default function XrayTechDashboard() {
   const [file, setFile] = useState<File | null>(null);
@@ -80,161 +98,217 @@ export default function XrayTechDashboard() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <Toaster />
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">X-Ray Technician Dashboard</h1>
-          <p className="text-gray-500">Upload and process radiology images</p>
-        </div>
-      </div>
+    <Box sx={{ p: 4, height: '100%', overflowY: 'auto', bgcolor: 'background.default' }}>
+      <Box sx={{ maxWidth: 1000, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Toaster />
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>X-Ray Technician Dashboard</Typography>
+          <Typography variant="body2" color="text.secondary">Upload and process radiology images</Typography>
+        </Box>
 
-      {!result ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <form onSubmit={handleUpload} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
-                <select 
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                >
-                  {patients.length === 0 && <option value="">No patients found...</option>}
-                  {patients.map(p => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} (ID: {p._id.slice(-6)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Modality</label>
-                <select 
-                  value={modality}
-                  onChange={(e) => setModality(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="X-Ray">X-Ray</option>
-                  <option value="MRI">MRI</option>
-                  <option value="Blood Report">Blood Report</option>
-                  <option value="CT Scan">CT Scan</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Study Type</label>
-                <select 
-                  value={studyType}
-                  onChange={(e) => setStudyType(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="Chest X-ray">Chest X-ray</option>
-                  <option value="Knee X-ray">Knee X-ray</option>
-                  <option value="Hand X-ray">Hand X-ray</option>
-                  <option value="Pelvis X-ray">Pelvis X-ray</option>
-                  <option value="Brain MRI">Brain MRI</option>
-                  <option value="Complete Blood Count">Complete Blood Count</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
-                <select 
-                  value={view}
-                  onChange={(e) => setView(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="PA">PA</option>
-                  <option value="AP">AP</option>
-                  <option value="Lateral">Lateral</option>
-                </select>
-              </div>
-            </div>
+        {!result ? (
+          <Card component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} sx={{ p: 4, borderRadius: 3, boxShadow: 2 }}>
+            <form onSubmit={handleUpload}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Patient</InputLabel>
+                    <Select
+                      value={patientId}
+                      label="Patient"
+                      onChange={(e) => setPatientId(e.target.value)}
+                      required
+                    >
+                      {patients.length === 0 && <MenuItem value="" disabled>No patients found...</MenuItem>}
+                      {patients.map(p => (
+                        <MenuItem key={p._id} value={p._id}>
+                          {p.name} (ID: {p._id.slice(-6)})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  
+                  <FormControl fullWidth>
+                    <InputLabel>Modality</InputLabel>
+                    <Select
+                      value={modality}
+                      label="Modality"
+                      onChange={(e) => setModality(e.target.value)}
+                    >
+                      <MenuItem value="X-Ray">X-Ray</MenuItem>
+                      <MenuItem value="MRI">MRI</MenuItem>
+                      <MenuItem value="Blood Report">Blood Report</MenuItem>
+                      <MenuItem value="CT Scan">CT Scan</MenuItem>
+                    </Select>
+                  </FormControl>
 
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors">
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="hidden" 
-                id="xray-upload"
-              />
-              <label htmlFor="xray-upload" className="cursor-pointer flex flex-col items-center">
-                <UploadCloud className="h-12 w-12 text-gray-400 mb-3" />
-                <span className="text-sm font-medium text-gray-900">
-                  {file ? file.name : 'Click to upload X-ray Image'}
-                </span>
-                <span className="text-xs text-gray-500 mt-1">JPEG, PNG, DICOM (converted) up to 10MB</span>
-              </label>
-            </div>
+                  <FormControl fullWidth>
+                    <InputLabel>Study Type</InputLabel>
+                    <Select
+                      value={studyType}
+                      label="Study Type"
+                      onChange={(e) => setStudyType(e.target.value)}
+                    >
+                      <MenuItem value="Chest X-ray">Chest X-ray</MenuItem>
+                      <MenuItem value="Knee X-ray">Knee X-ray</MenuItem>
+                      <MenuItem value="Hand X-ray">Hand X-ray</MenuItem>
+                      <MenuItem value="Pelvis X-ray">Pelvis X-ray</MenuItem>
+                      <MenuItem value="Brain MRI">Brain MRI</MenuItem>
+                      <MenuItem value="Complete Blood Count">Complete Blood Count</MenuItem>
+                    </Select>
+                  </FormControl>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? <RefreshCcw className="animate-spin h-5 w-5 mr-2" /> : <UploadCloud className="h-5 w-5 mr-2" />}
-              {loading ? 'Analyzing with AI...' : 'Upload & Analyze'}
-            </button>
-          </form>
-        </motion.div>
-      ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-            <h2 className="text-lg font-semibold flex items-center mb-4"><CheckCircle className="h-5 w-5 mr-2 text-green-500"/> AI Analysis Complete</h2>
+                  <FormControl fullWidth>
+                    <InputLabel>View</InputLabel>
+                    <Select
+                      value={view}
+                      label="View"
+                      onChange={(e) => setView(e.target.value)}
+                    >
+                      <MenuItem value="PA">PA</MenuItem>
+                      <MenuItem value="AP">AP</MenuItem>
+                      <MenuItem value="Lateral">Lateral</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Button
+                  component="label"
+                  sx={{
+                    width: '100%',
+                    height: 200,
+                    border: '2px dashed',
+                    borderColor: 'divider',
+                    borderRadius: 3,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'background.default',
+                    color: 'text.secondary',
+                    textTransform: 'none',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.02)', borderColor: 'primary.main' }
+                  }}
+                >
+                  <UploadCloud className="w-12 h-12 mb-3 text-primary-main" />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {file ? file.name : 'Click to upload X-ray Image'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ mt: 1 }}>JPEG, PNG, DICOM (converted) up to 10MB</Typography>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    hidden 
+                  />
+                </Button>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  variant="contained"
+                  color="primary"
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <UploadCloud className="w-5 h-5" />}
+                  sx={{ py: 1.5, borderRadius: 8, fontSize: '1rem', fontWeight: 600 }}
+                >
+                  {loading ? 'Analyzing with AI...' : 'Upload & Analyze'}
+                </Button>
+              </Box>
+            </form>
+          </Card>
+        ) : (
+          <Box component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 4 }}>
             
-            <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-100">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-blue-900">AI Confidence Score</span>
-                <span className="text-sm font-bold text-blue-700">{(result.aiResult.confidence * 100).toFixed(0)}%</span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${result.aiResult.confidence * 100}%` }}></div>
-              </div>
-            </div>
+            {/* AI Analysis Complete */}
+            <Card sx={{ p: 4, borderRadius: 3, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, color: 'success.main', fontWeight: 700 }}>
+                <CheckCircle className="w-6 h-6" /> AI Analysis Complete
+              </Typography>
+              
+              <Paper elevation={0} sx={{ p: 2, mb: 4, bgcolor: 'rgba(14, 165, 233, 0.08)', borderRadius: 2, border: '1px solid rgba(14, 165, 233, 0.2)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#0284c7' }}>AI Confidence Score</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0369a1' }}>
+                    {(result.aiResult.confidence * 100).toFixed(0)}%
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={result.aiResult.confidence * 100} 
+                  sx={{ height: 8, borderRadius: 4, bgcolor: 'rgba(14, 165, 233, 0.2)', '& .MuiLinearProgress-bar': { bgcolor: '#0284c7' } }} 
+                />
+              </Paper>
 
-            <div className="flex-grow space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">Findings</h3>
-                <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-1">
-                  {result.aiResult.findings.map((f: string, i: number) => <li key={i}>{f}</li>)}
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">Impression</h3>
-                <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1 mt-1">
-                  {result.aiResult.impression.map((imp: string, i: number) => <li key={i}>{imp}</li>)}
-                </ul>
-              </div>
-            </div>
-          </div>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>Findings</Typography>
+                  <List dense disablePadding>
+                    {result.aiResult.findings.map((f: string, i: number) => (
+                      <ListItem key={i} sx={{ px: 0, py: 0.5, alignItems: 'flex-start' }}>
+                        <ListItemIcon sx={{ minWidth: 20, mt: 0.5 }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-main" />
+                        </ListItemIcon>
+                        <ListItemText primary={f} slotProps={{ primary: { variant: 'body2', color: 'text.secondary' } }} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>Impression</Typography>
+                  <List dense disablePadding>
+                    {result.aiResult.impression.map((imp: string, i: number) => (
+                      <ListItem key={i} sx={{ px: 0, py: 0.5, alignItems: 'flex-start' }}>
+                        <ListItemIcon sx={{ minWidth: 20, mt: 0.5 }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-main" />
+                        </ListItemIcon>
+                        <ListItemText primary={imp} slotProps={{ primary: { variant: 'body2', color: 'text.secondary' } }} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              </Box>
+            </Card>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-            <h2 className="text-lg font-semibold flex items-center mb-4"><FileText className="h-5 w-5 mr-2 text-gray-500"/> Draft Report</h2>
-            <textarea
-              value={editedReport}
-              onChange={(e) => setEditedReport(e.target.value)}
-              className="flex-grow w-full rounded-lg border-gray-300 border p-4 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none resize-none h-64 lg:h-auto"
-            />
-            <div className="mt-4 flex gap-4">
-              <button 
-                onClick={() => setResult(null)}
-                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSubmitToDoctor}
-                disabled={loading}
-                className="flex-1 flex justify-center items-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none disabled:opacity-50"
-              >
-                {loading ? <RefreshCcw className="animate-spin h-5 w-5 mr-2" /> : <Send className="h-5 w-5 mr-2" />}
-                Submit to Doctor
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </div>
+            {/* Draft Report */}
+            <Card sx={{ p: 4, borderRadius: 3, display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, color: 'text.primary', fontWeight: 700 }}>
+                <FileText className="w-6 h-6 text-primary-main" /> Draft Report
+              </Typography>
+              
+              <TextField
+                multiline
+                fullWidth
+                sx={{ flex: 1, minHeight: 250, '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start', overflowY: 'auto' } }}
+                slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.875rem', lineHeight: 1.6, bgcolor: 'background.default' } } }}
+                value={editedReport}
+                onChange={(e) => setEditedReport(e.target.value)}
+              />
+              
+              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                <Button 
+                  onClick={() => setResult(null)}
+                  variant="outlined"
+                  color="inherit"
+                  sx={{ flex: 1, py: 1.5, borderRadius: 8 }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmitToDoctor}
+                  disabled={loading}
+                  variant="contained"
+                  color="success"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Send className="w-5 h-5" />}
+                  sx={{ flex: 1, py: 1.5, borderRadius: 8, fontWeight: 600 }}
+                >
+                  Submit to Doctor
+                </Button>
+              </Box>
+            </Card>
+          </Box>
+        )}
+      </Box>
+    </Box>
   );
 }

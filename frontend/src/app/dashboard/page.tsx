@@ -6,10 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { DashboardLayout, Chat as ChatItem } from '../../components/DashboardLayout';
 import { ClinicalCopilot } from '../../components/ClinicalCopilot';
-import { LabReportAnalyzer } from '../../components/LabReportAnalyzer';
 import { DocumentsList } from '../../components/DocumentsList';
 import { ChatInterface } from '../../components/ChatInterface';
-import { PatientReports } from '../../components/PatientReports';
 import XrayTechDashboard from '../../components/XrayTech';
 import XrayDoctorDashboard from '../../components/XrayDoctor';
 import { DrugSafety } from '../../components/DrugSafety';
@@ -168,8 +166,6 @@ export default function DashboardPage() {
     >
       {activeTab === 'copilot' && <ClinicalCopilot />}
       {activeTab === 'drug_safety' && <DrugSafety />}
-      {activeTab === 'reports' && <LabReportAnalyzer />}
-      {activeTab === 'patient_reports' && <PatientReports documents={generalDocuments} />}
       {activeTab === 'documents' && (
         <DocumentsList
           onStartChatWithDoc={async (doc) => {

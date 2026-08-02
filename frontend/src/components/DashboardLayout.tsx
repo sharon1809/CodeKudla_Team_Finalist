@@ -52,8 +52,8 @@ interface DashboardLayoutProps {
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
-  activeTab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients';
-  setActiveTab: (tab: 'copilot' | 'drug_safety' | 'reports' | 'patient_reports' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients') => void;
+  activeTab: 'copilot' | 'drug_safety' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients';
+  setActiveTab: (tab: 'copilot' | 'drug_safety' | 'documents' | 'chat' | 'xray_tech' | 'xray_doctor' | 'manage_patients') => void;
   activeChat: Chat | null;
   onNewChatCreated?: () => void;
   children: React.ReactNode;
@@ -72,18 +72,7 @@ const NAV_ITEMS = [
     sub: 'Evaluate polypharmacy',
     icon: AlertTriangle,
   },
-  {
-    id: 'patient_reports' as const,
-    label: 'Clinical Library',
-    sub: 'Search medical guidelines',
-    icon: BookOpen,
-  },
-  {
-    id: 'reports' as const,
-    label: 'Lab Report Scanner',
-    sub: 'Extract pathology data',
-    icon: FlaskConical,
-  },
+
   {
     id: 'documents' as const,
     label: 'Reference Library',

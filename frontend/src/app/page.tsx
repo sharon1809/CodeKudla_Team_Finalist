@@ -10,7 +10,6 @@ import {
   Zap,
   FileSearch,
   Pill,
-  ChevronRight,
   Heart,
   Brain,
   Microscope,
@@ -18,29 +17,45 @@ import {
   Users,
   Globe,
 } from 'lucide-react';
+import {
+  Box,
+  Typography,
+  Button,
+  Container,
+  Card,
+  Grid,
+  Chip,
+  AppBar,
+  Toolbar,
+  useTheme,
+} from '@mui/material';
 
 const FEATURES = [
   {
     icon: Activity,
-    color: 'icon-blue',
+    color: '#0ea5e9',
+    bgcolor: 'rgba(14, 165, 233, 0.1)',
     title: 'Differential Diagnosis',
     desc: 'Ranked likelihood list with ICD-10 codes parsed from raw clinical notes — in under 3 seconds.',
   },
   {
     icon: Pill,
-    color: 'icon-indigo',
+    color: '#8b5cf6',
+    bgcolor: 'rgba(139, 92, 246, 0.1)',
     title: 'Indian Brand & Generic Rx',
     desc: 'Generics + Indian brand names (Crocin, Augmentin, Azithral) with local dosages and routes.',
   },
   {
     icon: ShieldCheck,
-    color: 'icon-amber',
+    color: '#f59e0b',
+    bgcolor: 'rgba(245, 158, 11, 0.1)',
     title: 'Safety & Drug Checker',
     desc: 'Real-time alerts for drug interactions, allergies, renal & hepatic dose adjustments.',
   },
   {
     icon: FileSearch,
-    color: 'icon-emerald',
+    color: '#10b981',
+    bgcolor: 'rgba(16, 185, 129, 0.1)',
     title: 'OCR Lab Report RAG',
     desc: 'Upload scanned lab PDFs → intelligent OCR + pgvector semantic insights instantly.',
   },
@@ -61,228 +76,235 @@ const STATS = [
 ];
 
 export default function LandingPage() {
+  const theme = useTheme();
+
   return (
-    <div className="min-h-screen bg-white relative flex flex-col overflow-x-hidden text-[#111111]">
-      {/* Fixed soft ambient orbs */}
-      <div className="fixed top-[-200px] left-[-100px] w-[700px] h-[700px] bg-blue-600/3 rounded-full blur-[140px] pointer-events-none" />
-      <div className="fixed bottom-[-200px] right-[-100px] w-[600px] h-[600px] bg-blue-600/2 rounded-full blur-[120px] pointer-events-none" />
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', position: 'relative', overflowX: 'hidden' }}>
+      
+      {/* Ambient backgrounds */}
+      <Box sx={{ position: 'absolute', top: -200, left: -100, width: 700, height: 700, bgcolor: 'primary.main', opacity: 0.05, borderRadius: '50%', filter: 'blur(140px)', pointerEvents: 'none', zIndex: 0 }} />
+      <Box sx={{ position: 'absolute', bottom: -200, right: -100, width: 600, height: 600, bgcolor: 'secondary.main', opacity: 0.05, borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none', zIndex: 0 }} />
 
-      {/* ─── Navbar ─────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/10">
-              <Stethoscope className="h-4.5 w-4.5 text-white" />
-            </div>
-            <div>
-              <span className="font-bold text-[#111111] tracking-tight text-base">MedSynexa</span>
-              <span className="text-blue-600 text-[10px] font-bold ml-2 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100">AI</span>
-            </div>
-          </div>
+      {/* Navbar */}
+      <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'rgba(248,250,253,0.8)', backdropFilter: 'blur(16px)', borderBottom: '1px solid', borderColor: 'divider', zIndex: 50 }}>
+        <Container maxWidth="lg">
+          <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: '72px !important' }}>
+            
+            {/* Logo */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                <Stethoscope className="w-5 h-5 text-white" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em' }}>
+                MedSynexa <Chip label="AI" size="small" sx={{ ml: 1, bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 800, fontSize: '0.7rem', height: 20 }} />
+              </Typography>
+            </Box>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm text-gray-500 font-semibold">
-            <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
-            <a href="#workflow" className="hover:text-gray-900 transition-colors">Workflow</a>
-            <a href="#about" className="hover:text-gray-900 transition-colors">About</a>
-          </nav>
+            {/* Nav links (hidden on mobile) */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 4 }}>
+              <Typography component="a" href="#features" variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>Features</Typography>
+              <Typography component="a" href="#workflow" variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>Workflow</Typography>
+              <Typography component="a" href="#about" variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>About</Typography>
+            </Box>
 
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors px-4 py-2">
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="btn-primary text-xs px-5 py-2.5 flex items-center gap-2 group"
-            >
-              Get Started
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* ─── Hero ────────────────────────────────────────────── */}
-      <section className="flex-1 flex flex-col justify-center max-w-7xl w-full mx-auto px-6 pt-20 pb-16 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-
-          {/* Left — Copy */}
-          <div className="lg:col-span-7 flex flex-col space-y-8 fade-in-up">
-            {/* Trust badge */}
-            <div className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-full bg-blue-50 border border-blue-100/50 text-xs font-semibold text-blue-700">
-              <Zap className="h-3.5 w-3.5 text-blue-600" />
-              Sub-10-Second Real-Time Clinical AI — Built for Indian OPDs
-            </div>
-
-            <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-[#111111] tracking-tight leading-[1.1]">
-                Clinical Intelligence
-                <br />
-                <span className="text-blue-600">At the Speed of Care.</span>
-              </h1>
-              <p className="text-base text-gray-500 leading-relaxed max-w-xl">
-                Indian doctors spend under 2 minutes per OPD patient. MedSynexa delivers instant differential diagnoses, ICMR-aligned treatments, Indian generic dosages, and real-time safety guardrails — all grounded in your medical library.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/register"
-                className="btn-primary px-7 py-3.5 text-sm flex items-center gap-2.5 group"
-              >
-                Launch Free Copilot
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="/login"
-                className="btn-ghost px-7 py-3.5 text-sm flex items-center gap-2.5"
-              >
-                Sign In to Dashboard
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-gray-100">
-              {STATS.map((s) => (
-                <div key={s.value} className="space-y-0.5">
-                  <div className="text-2xl font-black text-blue-600">{s.value}</div>
-                  <div className="text-xs font-bold text-[#111111]">{s.label}</div>
-                  <div className="text-[10px] text-gray-400">{s.sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right — Feature Cards */}
-          <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className={`bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm transition-all hover:shadow-md hover:border-gray-300 flex flex-col gap-4 ${i % 2 === 1 ? 'mt-6' : ''}`}
-                >
-                  <div className={`icon-container ${f.color} h-10 w-10`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-[#111111] mb-1.5">{f.title}</h3>
-                    <p className="text-[11px] text-gray-500 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Workflow ─────────────────────────────────────────── */}
-      <section id="workflow" className="max-w-7xl mx-auto px-6 py-16 w-full relative z-10">
-        <div className="text-center mb-12">
-          <div className="badge badge-blue mx-auto mb-3">Clinical Workflow</div>
-          <h2 className="text-2xl font-bold text-[#111111] tracking-tight mb-2">
-            From Notes to Plan in Seconds
-          </h2>
-          <p className="text-gray-500 text-xs max-w-sm mx-auto">
-            A 4-step pipeline that turns messy OPD notes into structured, evidence-based clinical decisions.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl border border-gray-200/80 p-8 md:p-12 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {WORKFLOW.map((w, i) => {
-              const Icon = w.icon;
-              return (
-                <div key={w.step} className="flex flex-col items-center text-center space-y-4 relative">
-                  {/* connector line */}
-                  {i < WORKFLOW.length - 1 && (
-                    <div className="hidden md:block absolute top-6 left-[60%] w-full h-px bg-gradient-to-r from-blue-500/10 to-transparent" />
-                  )}
-                  <div className="relative z-10 h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/10 border border-blue-400/20">
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="text-[10px] font-bold text-blue-600 tracking-widest">{w.step}</div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[#111111] mb-1.5">{w.title}</h4>
-                    <p className="text-[11px] text-gray-500 leading-relaxed">{w.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Trust Section ────────────────────────────────────── */}
-      <section id="about" className="max-w-7xl mx-auto px-6 py-16 w-full relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { icon: ShieldCheck, color: 'icon-blue', title: 'Data Isolated per Doctor', desc: 'Your uploaded textbooks and patient data are namespaced entirely to your account. No cross-contamination between users.' },
-            { icon: Globe, color: 'icon-indigo', title: 'ICMR & NHP Aligned', desc: 'Clinical outputs reflect Indian National Health Programme guidelines, ensuring region-specific accuracy.' },
-            { icon: Users, color: 'icon-emerald', title: 'Built for Indian OPDs', desc: 'Designed for 80+ patient/day workloads — not Western EHR complexity. Fast, simple, and local.' },
-          ].map((t) => {
-            const Icon = t.icon;
-            return (
-              <div key={t.title} className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:border-gray-300 transition-colors flex flex-col gap-4">
-                <div className={`icon-container ${t.color} h-10 w-10`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-[#111111] mb-2">{t.title}</h3>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">{t.desc}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ─── CTA Banner ───────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 pb-20 w-full relative z-10">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-3xl p-10 md:p-14 text-center relative overflow-hidden shadow-xl shadow-blue-500/10">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5" />
-          <div className="relative z-10 flex flex-col items-center gap-6">
-            <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shadow-inner">
-              <Heart className="h-6 w-6 text-white heart-pulse" />
-            </div>
-            <div>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-2">
-                Start Diagnosing Smarter Today
-              </h2>
-              <p className="text-blue-100/90 text-sm max-w-md mx-auto">
-                Join MedSynexa — the AI copilot that works as fast as you think.
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/register" className="bg-white text-blue-600 border border-white hover:bg-blue-50 px-6 py-3 rounded-xl font-bold text-xs shadow-sm transition-all hover:scale-[1.01]">
-                Create Free Account
-              </Link>
-              <Link href="/login" className="bg-transparent text-white hover:bg-white/10 border border-white/20 px-6 py-3 rounded-xl font-bold text-xs transition-colors">
+            {/* CTA */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button component={Link} href="/login" variant="text" sx={{ display: { xs: 'none', sm: 'inline-flex' }, fontWeight: 600, color: 'text.secondary', '&:hover': { color: 'text.primary', bgcolor: 'transparent' } }}>
                 Sign In
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+              </Button>
+              <Button component={Link} href="/register" variant="contained" endIcon={<ArrowRight className="w-4 h-4" />} sx={{ borderRadius: 8, fontWeight: 700, px: 3 }}>
+                Get Started
+              </Button>
+            </Box>
 
-      {/* ─── Footer ───────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 py-8 px-6 relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Stethoscope className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="text-xs font-bold text-gray-800">MedSynexa AI</span>
-          </div>
-          <div className="text-[10px] text-gray-400 font-semibold">
-            © {new Date().getFullYear()} MedSynexa. Built for Indian Healthcare. Powered by LangChain, Gemini & pgvector.
-          </div>
-          <div className="flex gap-6 text-[10px] text-gray-400 font-bold">
-            <Link href="/login" className="hover:text-gray-800 transition-colors">Sign In</Link>
-            <Link href="/register" className="hover:text-gray-800 transition-colors">Register</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      <Box sx={{ position: 'relative', zIndex: 10 }}>
+        
+        {/* Hero Section */}
+        <Container maxWidth="lg" sx={{ pt: { xs: 8, md: 12 }, pb: { xs: 8, md: 12 } }}>
+          <Grid container spacing={8} sx={{ alignItems: 'center' }}>
+            
+            {/* Left Copy */}
+            <Grid size={{ xs: 12, lg: 7 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Chip
+                  icon={<Zap className="w-4 h-4" style={{ color: theme.palette.warning.main }} />}
+                  label="Sub-10-Second Real-Time Clinical AI — Built for Indian OPDs"
+                  sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(245, 158, 11, 0.1)', color: 'warning.main', fontWeight: 700, borderRadius: 2, px: 1 }}
+                />
+                
+                <Box>
+                  <Typography variant="h2" sx={{ fontWeight: 900, color: 'text.primary', letterSpacing: '-0.02em', lineHeight: 1.1, mb: 3, fontSize: { xs: '3rem', md: '4rem' } }}>
+                    Clinical Intelligence<br />
+                    <Box component="span" sx={{ background: 'linear-gradient(to right, #10B981, #14B8A6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                      At the Speed of Care.
+                    </Box>
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', maxWidth: 600, lineHeight: 1.7 }}>
+                    Indian doctors spend under 2 minutes per OPD patient. MedSynexa delivers instant differential diagnoses, ICMR-aligned treatments, Indian generic dosages, and real-time safety guardrails — all grounded in your medical library.
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Button component={Link} href="/register" variant="contained" size="large" endIcon={<ArrowRight className="w-4 h-4" />} sx={{ borderRadius: 8, fontWeight: 700, px: 4, py: 1.5, boxShadow: '0 8px 20px rgba(16,185,129,0.3)' }}>
+                    Launch Free Copilot
+                  </Button>
+                  <Button component={Link} href="/login" variant="outlined" size="large" sx={{ borderRadius: 8, fontWeight: 700, px: 4, py: 1.5, borderColor: 'divider', color: 'text.primary', '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(16,185,129,0.05)' } }}>
+                    Sign In to Dashboard
+                  </Button>
+                </Box>
+
+                {/* Stats Row */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, pt: 4, mt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                  {STATS.map(s => (
+                    <Box key={s.value}>
+                      <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main' }}>{s.value}</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'text.primary', mt: 0.5 }}>{s.label}</Typography>
+                      <Typography variant="caption" color="text.disabled" sx={{ display: 'block' }}>{s.sub}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Grid>
+
+            {/* Right Feature Cards */}
+            <Grid size={{ xs: 12, lg: 5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+                {FEATURES.map((f, i) => (
+                  <Card key={f.title} sx={{ p: 3, borderRadius: 4, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 2, mt: i % 2 === 1 ? 4 : 0, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)', borderColor: 'primary.main' } }}>
+                    <Box sx={{ w: 48, h: 48, borderRadius: 3, bgcolor: f.bgcolor, color: f.color, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, width: 48 }}>
+                      <f.icon className="w-6 h-6" />
+                    </Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{f.title}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{f.desc}</Typography>
+                  </Card>
+                ))}
+              </Box>
+            </Grid>
+
+          </Grid>
+        </Container>
+
+        {/* Workflow Section */}
+        <Box id="workflow" sx={{ bgcolor: 'rgba(255,255,255,0.02)', py: { xs: 8, md: 12 }, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Container maxWidth="lg">
+            
+            <Box sx={{ textAlign: 'center', mb: 8 }}>
+              <Chip label="Clinical Workflow" size="small" color="primary" sx={{ mb: 2, fontWeight: 700 }} />
+              <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>From Notes to Plan in Seconds</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto' }}>
+                A 4-step pipeline that turns messy OPD notes into structured, evidence-based clinical decisions.
+              </Typography>
+            </Box>
+
+            <Card sx={{ p: { xs: 4, md: 6 }, borderRadius: 6, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 3 }}>
+              <Grid container spacing={4}>
+                {WORKFLOW.map((w, i) => (
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }} key={w.step}>
+                    <Box sx={{ position: 'relative', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      {i < WORKFLOW.length - 1 && (
+                        <Box sx={{ display: { xs: 'none', md: 'block' }, position: 'absolute', top: 28, left: '60%', width: '100%', height: '2px', background: 'linear-gradient(90deg, rgba(16,185,129,0.3) 0%, transparent 100%)', zIndex: 0 }} />
+                      )}
+                      
+                      <Box sx={{ position: 'relative', zIndex: 10, width: 56, height: 56, borderRadius: 4, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>
+                        <w.icon className="w-6 h-6 text-white" />
+                      </Box>
+                      
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '0.1em', mb: 1 }}>{w.step}</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>{w.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">{w.desc}</Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Card>
+
+          </Container>
+        </Box>
+
+        {/* Trust Section */}
+        <Container id="about" maxWidth="lg" sx={{ py: { xs: 8, md: 12 } }}>
+          <Grid container spacing={4}>
+            {[
+              { icon: ShieldCheck, color: '#0ea5e9', bgcolor: 'rgba(14, 165, 233, 0.1)', title: 'Data Isolated per Doctor', desc: 'Your uploaded textbooks and patient data are namespaced entirely to your account. No cross-contamination between users.' },
+              { icon: Globe, color: '#8b5cf6', bgcolor: 'rgba(139, 92, 246, 0.1)', title: 'ICMR & NHP Aligned', desc: 'Clinical outputs reflect Indian National Health Programme guidelines, ensuring region-specific accuracy.' },
+              { icon: Users, color: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.1)', title: 'Built for Indian OPDs', desc: 'Designed for 80+ patient/day workloads — not Western EHR complexity. Fast, simple, and local.' },
+            ].map(t => (
+              <Grid size={{ xs: 12, md: 4 }} key={t.title}>
+                <Card sx={{ p: 4, height: '100%', borderRadius: 4, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 1, '&:hover': { borderColor: 'text.secondary' } }}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: t.bgcolor, color: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                    <t.icon className="w-6 h-6" />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>{t.title}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{t.desc}</Typography>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+
+        {/* CTA Banner */}
+        <Container maxWidth="lg" sx={{ pb: { xs: 8, md: 12 } }}>
+          <Box sx={{ position: 'relative', borderRadius: 6, overflow: 'hidden', bgcolor: 'primary.main', p: { xs: 6, md: 10 }, textAlign: 'center', boxShadow: '0 24px 48px rgba(16,185,129,0.2)' }}>
+            
+            <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%)', pointerEvents: 'none' }} />
+            
+            <Box sx={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <Box sx={{ width: 64, height: 64, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Heart className="w-8 h-8 text-white" />
+              </Box>
+              
+              <Box>
+                <Typography variant="h3" sx={{ fontWeight: 900, color: 'white', mb: 2, letterSpacing: '-0.02em' }}>
+                  Start Diagnosing Smarter Today
+                </Typography>
+                <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.8)', maxWidth: 500, mx: 'auto' }}>
+                  Join MedSynexa — the AI copilot that works as fast as you think.
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <Button component={Link} href="/register" variant="contained" size="large" sx={{ bgcolor: 'white', color: 'primary.dark', borderRadius: 8, fontWeight: 800, px: 4, '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } }}>
+                  Create Free Account
+                </Button>
+                <Button component={Link} href="/login" variant="outlined" size="large" sx={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, fontWeight: 700, px: 4, '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                  Sign In
+                </Button>
+              </Box>
+            </Box>
+
+          </Box>
+        </Container>
+
+        {/* Footer */}
+        <Box sx={{ borderTop: '1px solid', borderColor: 'divider', py: 4, bgcolor: 'background.paper' }}>
+          <Container maxWidth="lg">
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Stethoscope className="w-4 h-4 text-white" />
+                </Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>MedSynexa AI</Typography>
+              </Box>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                © {new Date().getFullYear()} MedSynexa. Built for Indian Healthcare. Powered by LangChain, Gemini & pgvector.
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 3 }}>
+                <Typography component={Link} href="/login" variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>Sign In</Typography>
+                <Typography component={Link} href="/register" variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>Register</Typography>
+              </Box>
+
+            </Box>
+          </Container>
+        </Box>
+
+      </Box>
+    </Box>
   );
 }

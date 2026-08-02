@@ -1,10 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, FileText, Activity, Search, RefreshCcw } from 'lucide-react';
+import { CheckCircle, FileText, Search, RefreshCcw, Activity } from 'lucide-react';
 import { api } from '../lib/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'react-hot-toast';
+import {
+  Box,
+  Typography,
+  Card,
+  List,
+  ListItemButton,
+  ListItemText,
+  IconButton,
+  TextField,
+  Button,
+  CircularProgress,
+  Chip,
+  Paper,
+  Divider,
+} from '@mui/material';
 
 export default function XrayDoctorDashboard() {
   const [studies, setStudies] = useState<any[]>([]);
@@ -35,8 +50,8 @@ export default function XrayDoctorDashboard() {
       const res = await api.get(`/xray/studies/${studyId}`);
       setSelectedStudy(res.data);
       setFinalReportText(res.data.aiReport?.generatedReport || '');
+      setImageUrl('');
 
-      // Fetch image as blob since it requires auth token
       try {
         const imageRes = await api.get(`/xray/studies/${studyId}/image`, {
           responseType: 'blob'
@@ -70,115 +85,165 @@ export default function XrayDoctorDashboard() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       <Toaster />
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">X-Ray Doctor Review</h1>
-          <p className="text-gray-500">Review technician-submitted reports</p>
-        </div>
-        <button onClick={fetchStudies} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg">
-          <RefreshCcw className="h-5 w-5 text-gray-600" />
-        </button>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>X-Ray Doctor Review</Typography>
+          <Typography variant="body2" color="text.secondary">Review technician-submitted reports</Typography>
+        </Box>
+        <Button
+          onClick={fetchStudies}
+          startIcon={<RefreshCcw className="w-4 h-4" />}
+          variant="outlined"
+          color="inherit"
+          sx={{ borderRadius: 8, textTransform: 'none' }}
+        >
+          Refresh
+        </Button>
+      </Box>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Box sx={{ display: 'flex', gap: 3, flex: 1, minHeight: 0 }}>
+        
         {/* Left Column: List of pending studies */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-[calc(100vh-200px)] overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-4">Pending Review ({studies.length})</h2>
+        <Paper sx={{ width: 340, display: 'flex', flexDirection: 'column', borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', flexShrink: 0 }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Pending Review ({studies.length})</Typography>
+          </Box>
           
-          {loading ? (
-            <div className="flex justify-center p-8"><RefreshCcw className="animate-spin h-6 w-6 text-blue-500" /></div>
-          ) : studies.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center p-8">No studies pending review.</p>
-          ) : (
-            <div className="space-y-3">
-              {studies.map(study => (
-                <div 
-                  key={study._id} 
-                  onClick={() => handleSelectStudy(study._id)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                    selectedStudy?.study?._id === study._id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-gray-900">{study.patientId?.name || 'Unknown Patient'}</span>
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Review</span>
-                  </div>
-                  <div className="text-sm text-gray-600">{study.modality || 'X-Ray'} - {study.studyType}</div>
-                  <div className="text-xs text-gray-400 mt-2">
-                    {new Date(study.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          <List sx={{ flex: 1, overflowY: 'auto', p: 1.5 }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : studies.length === 0 ? (
+              <Box sx={{ textAlign: 'center', p: 4, color: 'text.secondary' }}>
+                <Typography variant="body2">No studies pending review.</Typography>
+              </Box>
+            ) : (
+              studies.map(study => {
+                const isSelected = selectedStudy?.study?._id === study._id;
+                return (
+                  <ListItemButton
+                    key={study._id}
+                    onClick={() => handleSelectStudy(study._id)}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      border: '1px solid',
+                      borderColor: isSelected ? 'primary.main' : 'divider',
+                      bgcolor: isSelected ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                      '&:hover': { bgcolor: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.05)' },
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      gap: 0.5,
+                      p: 2,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: isSelected ? 'primary.main' : 'text.primary' }}>
+                        {study.patientId?.name || 'Unknown Patient'}
+                      </Typography>
+                      <Chip label="Review" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }} />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {study.modality || 'X-Ray'} - {study.studyType}
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled">
+                      {new Date(study.createdAt).toLocaleDateString()}
+                    </Typography>
+                  </ListItemButton>
+                );
+              })
+            )}
+          </List>
+        </Paper>
 
         {/* Right Column: Review Details */}
-        <div className="lg:col-span-2">
-          {selectedStudy ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-[calc(100vh-200px)]">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <div>
-                  <h2 className="text-xl font-bold">{selectedStudy.study.patientId?.name} - {selectedStudy.study.modality || 'X-Ray'} ({selectedStudy.study.studyType})</h2>
-                  <p className="text-sm text-gray-500">Tech: {selectedStudy.study.technicianId?.firstName} {selectedStudy.study.technicianId?.lastName}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-blue-700">AI Confidence: {(selectedStudy.aiReport?.confidence * 100).toFixed(0)}%</div>
-                </div>
-              </div>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <AnimatePresence mode="wait">
+            {selectedStudy ? (
+              <Box component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 0, overflow: 'hidden' }}>
+                  
+                  <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.02)' }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        {selectedStudy.study.patientId?.name} - {selectedStudy.study.modality || 'X-Ray'} ({selectedStudy.study.studyType})
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Tech: {selectedStudy.study.technicianId?.firstName} {selectedStudy.study.technicianId?.lastName}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>AI Confidence</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: selectedStudy.aiReport?.confidence > 0.7 ? 'success.main' : 'warning.main' }}>
+                        {(selectedStudy.aiReport?.confidence * 100).toFixed(0)}%
+                      </Typography>
+                    </Box>
+                  </Box>
 
-              <div className="flex-grow flex flex-col md:flex-row gap-6 mb-6">
-                <div className="md:w-1/3 bg-black rounded-lg flex items-center justify-center border border-gray-200 p-2 overflow-hidden">
-                  {imageUrl ? (
-                    <img 
-                      src={imageUrl} 
-                      alt="Patient Diagnostic Scan" 
-                      className="max-w-full max-h-[400px] object-contain"
-                    />
-                  ) : (
-                    <span className="text-gray-500 text-sm">Loading image...</span>
-                  )}
-                </div>
-                
-                <div className="md:w-2/3 flex flex-col">
-                  <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center"><FileText className="h-4 w-4 mr-1"/> Report Editor</label>
-                  <textarea
-                    value={finalReportText}
-                    onChange={(e) => setFinalReportText(e.target.value)}
-                    className="flex-grow w-full rounded-lg border-gray-300 border p-4 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                  />
-                </div>
-              </div>
+                  <Box sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 0 }}>
+                    <Box sx={{ width: { xs: '100%', md: '45%' }, p: 3, display: 'flex', flexDirection: 'column', borderRight: { md: '1px solid' }, borderColor: { md: 'divider' }, bgcolor: 'background.default' }}>
+                      <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                        <Activity className="w-4 h-4" /> Diagnostic Scan
+                      </Typography>
+                      <Box sx={{ flex: 1, bgcolor: '#000', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                        {imageUrl ? (
+                          <img src={imageUrl} alt="Patient Diagnostic Scan" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">Loading image...</Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    
+                    <Box sx={{ width: { xs: '100%', md: '55%' }, p: 3, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', flexShrink: 0 }}>
+                        <FileText className="w-4 h-4" /> Report Editor
+                      </Typography>
+                      <TextField
+                        multiline
+                        fullWidth
+                        sx={{ 
+                          flex: 1, 
+                          minHeight: 0,
+                          '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start', overflowY: 'auto' } 
+                        }}
+                        slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.875rem', lineHeight: 1.6 } } }}
+                        value={finalReportText}
+                        onChange={(e) => setFinalReportText(e.target.value)}
+                      />
+                    </Box>
+                  </Box>
 
-              <div className="flex justify-end gap-4 border-t pt-4">
-                <button 
-                  onClick={() => setSelectedStudy(null)}
-                  className="py-2 px-6 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleApprove}
-                  disabled={actionLoading}
-                  className="flex items-center py-2 px-6 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none disabled:opacity-50"
-                >
-                  {actionLoading ? <RefreshCcw className="animate-spin h-4 w-4 mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                  Approve & Generate PDF
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center h-[calc(100vh-200px)] text-gray-400">
-              <Search className="h-16 w-16 mb-4 text-gray-300" />
-              <p>Select a study from the list to review</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                  <Box sx={{ p: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'flex-end', gap: 2, bgcolor: 'background.paper' }}>
+                    <Button onClick={() => setSelectedStudy(null)} variant="outlined" color="inherit" sx={{ borderRadius: 8 }}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleApprove}
+                      disabled={actionLoading}
+                      variant="contained"
+                      color="success"
+                      startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <CheckCircle className="w-4 h-4" />}
+                      sx={{ borderRadius: 8, px: 4 }}
+                    >
+                      Approve & Generate PDF
+                    </Button>
+                  </Box>
+                </Card>
+              </Box>
+            ) : (
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center', boxShadow: 'none' }}>
+                <Search className="w-16 h-16 mb-4 text-primary-dark opacity-50" />
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: 'text.secondary' }}>Select a study</Typography>
+                <Typography variant="body2" color="text.disabled">Choose a study from the list to review the AI analysis and generate a report.</Typography>
+              </Card>
+            )}
+          </AnimatePresence>
+        </Box>
+      </Box>
+    </Box>
   );
 }

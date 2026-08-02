@@ -1,7 +1,7 @@
 import { Schema, model, Document as MongoDocument, Types } from 'mongoose';
 
 // Types
-export interface IXrayStudy extends MongoDocument {
+export interface IXrayStudy {
   patientId: Types.ObjectId;
   doctorId?: Types.ObjectId;
   technicianId?: Types.ObjectId;
@@ -12,14 +12,14 @@ export interface IXrayStudy extends MongoDocument {
   updatedAt: Date;
 }
 
-export interface IXrayImage extends MongoDocument {
+export interface IXrayImage {
   studyId: Types.ObjectId;
   imageUrl: string;
   view: string;
   uploadedAt: Date;
 }
 
-export interface IAIReport extends MongoDocument {
+export interface IAIReport {
   studyId: Types.ObjectId;
   rawJson: string; // Storing the Zod validated JSON as string
   generatedReport: string;
@@ -28,7 +28,7 @@ export interface IAIReport extends MongoDocument {
   createdAt: Date;
 }
 
-export interface IFinalReport extends MongoDocument {
+export interface IFinalReport {
   studyId: Types.ObjectId;
   approvedByDoctor: Types.ObjectId;
   approvedAt: Date;

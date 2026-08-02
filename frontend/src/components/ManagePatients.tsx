@@ -5,6 +5,28 @@ import { api } from '../lib/api';
 import { Trash2, UserPlus, Search, RefreshCcw } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import {
+  Box,
+  Typography,
+  Card,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Chip,
+  Paper,
+  InputAdornment,
+} from '@mui/material';
 
 export default function ManagePatients() {
   const [patients, setPatients] = useState<any[]>([]);
@@ -19,6 +41,8 @@ export default function ManagePatients() {
   const [medicalHistory, setMedicalHistory] = useState('');
   const [allergies, setAllergies] = useState('');
   const [creating, setCreating] = useState(false);
+  
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPatients = async () => {
     try {
@@ -81,193 +105,222 @@ export default function ManagePatients() {
     }
   };
 
+  const filteredPatients = patients.filter(p => 
+    p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p._id?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <Toaster />
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Patients</h1>
-          <p className="text-gray-500">View and register new patients</p>
-        </div>
-        <button onClick={fetchPatients} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg">
-          <RefreshCcw className="h-5 w-5 text-gray-600" />
-        </button>
-      </div>
+    <Box sx={{ p: 4, height: '100%', overflowY: 'auto', bgcolor: 'background.default' }}>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Toaster />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 800 }}>Manage Patients</Typography>
+            <Typography variant="body2" color="text.secondary">View and register new patients</Typography>
+          </Box>
+          <Button
+            onClick={fetchPatients}
+            startIcon={<RefreshCcw className="w-4 h-4" />}
+            variant="outlined"
+            color="inherit"
+            sx={{ borderRadius: 8, textTransform: 'none' }}
+          >
+            Refresh
+          </Button>
+        </Box>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Create Patient Form */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center"><UserPlus className="h-5 w-5 mr-2 text-blue-500"/> New Patient</h2>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '350px 1fr' }, gap: 4 }}>
           
-          <form onSubmit={handleCreatePatient} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input 
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="John Doe"
-                required
+          {/* Create Patient Form */}
+          <Box component={motion.div} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <Card sx={{ p: 3, borderRadius: 3, boxShadow: 1, bgcolor: 'background.paper', position: 'sticky', top: 24 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, fontWeight: 700, color: 'primary.main' }}>
+                <UserPlus className="w-5 h-5" /> New Patient
+              </Typography>
+              
+              <form onSubmit={handleCreatePatient}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                  
+                  <TextField 
+                    label="Full Name" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    required 
+                    fullWidth 
+                    size="small"
+                  />
+                  
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField 
+                      label="Age" 
+                      type="number" 
+                      value={age} 
+                      onChange={(e) => setAge(e.target.value)} 
+                      required 
+                      sx={{ flex: 1 }} 
+                      size="small"
+                    />
+                    <TextField 
+                      label="Weight (kg)" 
+                      type="number" 
+                      value={weight} 
+                      onChange={(e) => setWeight(e.target.value)} 
+                      sx={{ flex: 1 }} 
+                      size="small"
+                    />
+                  </Box>
+                  
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Gender</InputLabel>
+                    <Select value={gender} label="Gender" onChange={(e) => setGender(e.target.value)}>
+                      <MenuItem value="male">Male</MenuItem>
+                      <MenuItem value="female">Female</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField 
+                    label="Contact Number" 
+                    type="tel" 
+                    value={contactNumber} 
+                    onChange={(e) => setContactNumber(e.target.value)} 
+                    fullWidth 
+                    size="small"
+                  />
+                  
+                  <TextField 
+                    label="Medical History" 
+                    placeholder="Comma separated" 
+                    value={medicalHistory} 
+                    onChange={(e) => setMedicalHistory(e.target.value)} 
+                    multiline 
+                    rows={2} 
+                    fullWidth 
+                    size="small"
+                  />
+                  
+                  <TextField 
+                    label="Allergies" 
+                    placeholder="Comma separated" 
+                    value={allergies} 
+                    onChange={(e) => setAllergies(e.target.value)} 
+                    fullWidth 
+                    size="small"
+                  />
+
+                  <Button 
+                    type="submit" 
+                    disabled={creating}
+                    variant="contained"
+                    color="primary"
+                    startIcon={creating ? <CircularProgress size={16} color="inherit" /> : <UserPlus className="w-4 h-4" />}
+                    sx={{ mt: 1, py: 1.5, borderRadius: 8, fontWeight: 600 }}
+                  >
+                    Register Patient
+                  </Button>
+                </Box>
+              </form>
+            </Card>
+          </Box>
+
+          {/* Patients List */}
+          <Card sx={{ display: 'flex', flexDirection: 'column', borderRadius: 3, boxShadow: 1, bgcolor: 'background.paper', overflow: 'hidden' }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.02)' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Patient Directory</Typography>
+              <TextField
+                placeholder="Search patients..."
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start"><Search className="w-4 h-4" /></InputAdornment>,
+                    sx: { borderRadius: 8, bgcolor: 'background.default' }
+                  }
+                }}
               />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                <input 
-                  type="number" 
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="35"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
-                <input 
-                  type="number" 
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="70"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                <select 
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-              <input 
-                type="tel" 
-                value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
-                className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="+91 9876543210"
-              />
-            </div>
+            </Box>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Medical History (comma separated)</label>
-              <textarea 
-                value={medicalHistory}
-                onChange={(e) => setMedicalHistory(e.target.value)}
-                className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20"
-                placeholder="Type 2 Diabetes, Hypertension..."
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Allergies (comma separated)</label>
-              <input 
-                type="text" 
-                value={allergies}
-                onChange={(e) => setAllergies(e.target.value)}
-                className="w-full rounded-lg border-gray-300 border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Penicillin, Peanuts"
-              />
-            </div>
+            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>
+              ) : filteredPatients.length === 0 ? (
+                <Box sx={{ textAlign: 'center', p: 8, color: 'text.secondary' }}>
+                  <Typography variant="body2">No patients found. Register a new patient.</Typography>
+                </Box>
+              ) : (
+                <TableContainer>
+                  <Table stickyHeader size="medium">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 600, bgcolor: 'rgba(255,255,255,0.02)' }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 600, bgcolor: 'rgba(255,255,255,0.02)' }}>Demographics</TableCell>
+                        <TableCell sx={{ fontWeight: 600, bgcolor: 'rgba(255,255,255,0.02)' }}>Clinical Details</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, bgcolor: 'rgba(255,255,255,0.02)' }}>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredPatients.map((p) => (
+                        <TableRow key={p._id} hover>
+                          <TableCell sx={{ verticalAlign: 'top' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{p.name}</Typography>
+                            <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>ID: {p._id.slice(-6)}</Typography>
+                            <Typography variant="caption" sx={{ color: 'text.disabled' }}>{p.contactNumber || 'No contact'}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top' }}>
+                            <Typography variant="body2">{p.age} yrs, <span style={{ textTransform: 'capitalize' }}>{p.gender}</span>{p.weight ? `, ${p.weight} kg` : ''}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ verticalAlign: 'top', maxWidth: 300 }}>
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', mr: 1 }}>History:</Typography>
+                              <Typography variant="caption">{Array.isArray(p.medicalHistory) ? (p.medicalHistory.join(', ') || 'None') : (p.medicalHistory || 'None')}</Typography>
+                            </Box>
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', mr: 1 }}>Allergies:</Typography>
+                              {p.allergies?.length > 0 ? (
+                                p.allergies.map((a: string, i: number) => (
+                                  <Chip key={i} label={a} size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: '0.65rem', mr: 0.5, mb: 0.5 }} />
+                                ))
+                              ) : <Typography variant="caption">None</Typography>}
+                            </Box>
+                            {p.currentMedications?.length > 0 && (
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', mr: 1 }}>Meds:</Typography>
+                                {p.currentMedications.map((m: any, i: number) => (
+                                  <Chip 
+                                    key={i} 
+                                    label={`${m.drugName} ${m.startDate ? `(${new Date(m.startDate).toLocaleDateString(undefined, {month: 'short', year: '2-digit'})})` : ''}`} 
+                                    size="small" 
+                                    color="info" 
+                                    variant="outlined" 
+                                    sx={{ height: 20, fontSize: '0.65rem', mr: 0.5, mb: 0.5 }} 
+                                  />
+                                ))}
+                              </Box>
+                            )}
+                          </TableCell>
+                          <TableCell align="right" sx={{ verticalAlign: 'top' }}>
+                            <IconButton 
+                              onClick={() => handleDeletePatient(p._id)}
+                              color="error"
+                              size="small"
+                              sx={{ bgcolor: 'rgba(239, 68, 68, 0.08)' }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          </Card>
 
-            <button 
-              type="submit" 
-              disabled={creating}
-              className="w-full mt-4 flex justify-center items-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {creating ? <RefreshCcw className="animate-spin h-4 w-4 mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
-              Register Patient
-            </button>
-          </form>
-        </motion.div>
-
-        {/* Patients List */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-[calc(100vh-200px)] flex flex-col">
-          <div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
-            <h2 className="text-lg font-semibold text-gray-800">Patient Directory</h2>
-            <div className="relative">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Search patients..." className="pl-9 pr-4 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-0">
-            {loading ? (
-              <div className="flex justify-center p-8"><RefreshCcw className="animate-spin h-6 w-6 text-blue-500" /></div>
-            ) : patients.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center p-8">No patients found. Register a new patient.</p>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Demographics</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clinical Details</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {patients.map((p) => (
-                    <tr key={p._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{p.name}</div>
-                        <div className="text-xs text-gray-500 font-mono mt-0.5">ID: {p._id.slice(-6)}</div>
-                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">{p.contactNumber || 'No contact'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{p.age} yrs, <span className="capitalize">{p.gender}</span>{p.weight ? `, ${p.weight} kg` : ''}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-xs text-gray-900 max-w-xs truncate" title={Array.isArray(p.medicalHistory) ? p.medicalHistory.join(', ') : p.medicalHistory}>
-                          <span className="font-semibold text-gray-500">History: </span>
-                          {Array.isArray(p.medicalHistory) ? (p.medicalHistory.join(', ') || 'None') : (p.medicalHistory || 'None')}
-                        </div>
-                        <div className="text-xs text-gray-900 mt-1 max-w-xs truncate">
-                          <span className="font-semibold text-gray-500">Allergies: </span>
-                          {p.allergies?.length > 0 ? (
-                            p.allergies.map((a: string, i: number) => (
-                              <span key={i} className="inline-block bg-red-50 text-red-700 px-1.5 rounded mr-1 border border-red-100">{a}</span>
-                            ))
-                          ) : 'None'}
-                        </div>
-                        {p.currentMedications?.length > 0 && (
-                          <div className="text-xs text-gray-900 mt-1 max-w-xs truncate">
-                            <span className="font-semibold text-gray-500">Meds: </span>
-                            {p.currentMedications.map((m: any, i: number) => (
-                              <span key={i} className="inline-block bg-blue-50 text-blue-700 px-1.5 rounded mr-1 border border-blue-100" title={`${m.drugName} - ${m.dosage || ''} ${m.frequency || ''}${m.startDate ? ` (Started: ${new Date(m.startDate).toLocaleDateString()})` : ''}`}>
-                                {m.drugName} 
-                                {m.startDate && <span className="text-blue-500/70 text-[10px] ml-1">({new Date(m.startDate).toLocaleDateString(undefined, {month: 'short', year: '2-digit'})})</span>}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                          onClick={() => handleDeletePatient(p._id)}
-                          className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }
