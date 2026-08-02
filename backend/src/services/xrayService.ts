@@ -2,6 +2,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { z } from 'zod';
 import * as fs from 'fs';
 import { VectorMatch } from '../types';
+import { executeWithFallback } from './apiKeyManager';
 
 // Zod Schema for X-Ray Analysis
 export const xrayAnalysisSchema = z.object({
@@ -17,7 +18,7 @@ export const xrayAnalysisSchema = z.object({
 export type XrayAnalysisData = z.infer<typeof xrayAnalysisSchema>;
 
 /**
- * Analyzes an X-Ray image using Gemini Vision and returns structured JSON
+ * Analyzes an X-Ray image using Gemini Vision with automatic multi-key API fallback
  */
 export const analyzeXrayWithGemini = async (
   filePath: string,
@@ -25,14 +26,6 @@ export const analyzeXrayWithGemini = async (
   modality: string = 'X-Ray',
   mimeType: string = 'image/jpeg'
 ): Promise<XrayAnalysisData> => {
-  const llm = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    model: 'gemini-2.5-flash',
-    temperature: 0,
-  });
-
-  const structuredLlm = llm.withStructuredOutput(xrayAnalysisSchema);
-
   const fileData = fs.readFileSync(filePath);
   const base64Data = fileData.toString('base64');
 
@@ -52,8 +45,17 @@ Return a structured JSON output detailing the study, image/scan quality, specifi
     ],
   };
 
-  const response = await structuredLlm.invoke([message]);
-  return response;
+  return executeWithFallback('gemini', async (apiKey) => {
+    const llm = new ChatGoogleGenerativeAI({
+      apiKey,
+      model: 'gemini-2.5-flash',
+      temperature: 0,
+    });
+
+    const structuredLlm = llm.withStructuredOutput(xrayAnalysisSchema);
+    const response = await structuredLlm.invoke([message]);
+    return response;
+  });
 };
 
 /**
@@ -79,19 +81,13 @@ ${data.abnormalities.length > 0 ? data.abnormalities.map(a => '- ' + a).join('\n
 };
 
 /**
- * Generates a final professional report grounded in the textbook RAG context
+ * Generates a final professional report grounded in the textbook RAG context with multi-key API fallback
  */
 export const generateGroundedReport = async (
   initialFindings: XrayAnalysisData,
   ragContext: VectorMatch[],
   modality: string
 ): Promise<string> => {
-  const llm = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    model: 'gemini-2.5-flash',
-    temperature: 0.2,
-  });
-
   const contextText = ragContext.length > 0 
     ? ragContext.map((c, i) => `[Source ${i + 1}] (${c.filename}):\n"${c.content}"`).join('\n\n')
     : 'No relevant textbook context found.';
@@ -117,11 +113,18 @@ INSTRUCTIONS:
 4. Format the report using clear headers (e.g., CLINICAL INDICATION, FINDINGS, IMPRESSION, RECOMMENDATIONS).
 5. Output ONLY the raw report text in PLAIN TEXT format. DO NOT use Markdown formatting like **bold** or asterisks, as this will be displayed in a plain text editor. Do not wrap in JSON.`;
 
-  const response: any = await llm.invoke([
-    { role: 'user', content: prompt }
-  ]);
+  return executeWithFallback('gemini', async (apiKey) => {
+    const llm = new ChatGoogleGenerativeAI({
+      apiKey,
+      model: 'gemini-2.5-flash',
+      temperature: 0.2,
+    });
 
-  const responseContent = typeof response.content === 'string' ? response.content : String(response.content);
-  // Strip out remaining markdown bold/italic asterisks or hashes just in case
-  return responseContent.replace(/\*\*/g, '').replace(/__/g, '').replace(/#/g, '').trim();
+    const response: any = await llm.invoke([
+      { role: 'user', content: prompt }
+    ]);
+
+    const responseContent = typeof response.content === 'string' ? response.content : String(response.content);
+    return responseContent.replace(/\*\*/g, '').replace(/__/g, '').replace(/#/g, '').trim();
+  });
 };
