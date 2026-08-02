@@ -308,14 +308,31 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onRefreshCha
 
         {(!chat.messages || chat.messages.length === 0) && !isSubmitting && (
           <div className="h-full flex flex-col items-center justify-center text-center gap-3.5 py-10">
-            <div className="icon-container icon-blue h-12 w-12">
+            <div className="h-12 w-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center border border-teal-200 shadow-sm">
               <Stethoscope className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-gray-800">Reference Consultation Active</h3>
-              <p className="text-[10px] text-gray-400 mt-1 max-w-xs leading-normal">
-                Submit questions or dictate symptoms to search <span className="font-semibold text-gray-600">{documentName}</span>.
+              <h3 className="text-xs font-bold text-slate-900">Reference Consultation Active</h3>
+              <p className="text-[10px] text-slate-500 mt-1 max-w-xs leading-normal">
+                Submit questions or dictate symptoms to search <span className="font-semibold text-teal-800">{documentName}</span>.
               </p>
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 mt-2 max-w-md">
+              {[
+                "Summarize primary clinical findings",
+                "Key treatment guidelines & dosage",
+                "Abnormal values & risk flags",
+              ].map((chip, cIdx) => (
+                <button
+                  key={cIdx}
+                  onClick={() => submitQuestion(chip)}
+                  className="px-3 py-1.5 bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border border-slate-200 rounded-xl text-[11px] font-semibold transition-all shadow-2xs hover:shadow-xs"
+                >
+                  ⚡ {chip}
+                </button>
+              ))}
             </div>
           </div>
         )}

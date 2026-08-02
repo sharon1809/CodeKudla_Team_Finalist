@@ -20,6 +20,7 @@ import {
   History,
   ShieldAlert,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
@@ -33,6 +34,7 @@ export default function OPDPage() {
   // Form State
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Speech Recognition State
   const [isListening, setIsListening] = useState(false);
@@ -195,29 +197,71 @@ export default function OPDPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Stethoscope className="w-7 h-7 text-teal-700" />
-              OPD Clinical Copilot
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Voice-assisted dictation, differential diagnosis, and ICMR treatment protocol generator
-            </p>
+        {/* Header Hero Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold uppercase tracking-wider">
+                <Stethoscope className="w-3.5 h-3.5" /> Voice & Clinical Copilot
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                OPD Clinical Consultation Copilot
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                Real-time ambient voice dictation, automated differential diagnosis generator, and ICMR treatment protocol engine.
+              </p>
+            </div>
+
+            {!isCreating && !selectedSession && (
+              <button
+                onClick={() => {
+                  setChiefComplaint("");
+                  setIsCreating(true);
+                }}
+                className="btn-teal text-xs py-3 px-6 shadow-lg shadow-teal-700/30 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New OPD Dictation</span>
+              </button>
+            )}
           </div>
 
+          {/* Quick Metrics Bar */}
           {!isCreating && !selectedSession && (
-            <button
-              onClick={() => {
-                setChiefComplaint("");
-                setIsCreating(true);
-              }}
-              className="btn-teal text-xs py-2.5 px-5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New OPD Dictation</span>
-            </button>
+            <div className="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                  {sessions.length}
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Consultations</span>
+                  <span className="font-bold text-slate-200">Logged History</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  <Mic className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Voice Dictation</span>
+                  <span className="font-bold text-slate-200">Whisper AI Enabled</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3 col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                  ICMR
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Treatment Engine</span>
+                  <span className="font-bold text-slate-200">Clinical Protocol</span>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -245,31 +289,62 @@ export default function OPDPage() {
                 </div>
 
                 <form onSubmit={handleAnalyze} className="space-y-6 max-w-4xl mx-auto">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Chief Complaint & Clinical Symptoms
                     </label>
-                    <button
-                      type="button"
-                      onClick={toggleListening}
-                      className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all border ${
-                        isListening
-                          ? "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
-                          : "bg-teal-50 border-teal-200 text-teal-800 hover:bg-teal-100"
-                      }`}
-                    >
-                      {isListening ? (
-                        <>
-                          <span className="h-2 w-2 bg-rose-500 rounded-full animate-ping" />
-                          <span>Stop Recording</span>
-                        </>
-                      ) : (
-                        <>
-                          <Mic className="w-3.5 h-3.5" />
-                          <span>Start Ambient Voice Dictation</span>
-                        </>
+
+                    <div className="flex items-center gap-3">
+                      {isListening && (
+                        <div className="flex items-center gap-1 h-5 px-2 bg-rose-100/60 rounded-lg border border-rose-200">
+                          <span className="w-1 bg-rose-500 rounded-full animate-wave-bar" style={{ animationDelay: '0.1s' }} />
+                          <span className="w-1 bg-rose-600 rounded-full animate-wave-bar" style={{ animationDelay: '0.3s' }} />
+                          <span className="w-1 bg-rose-500 rounded-full animate-wave-bar" style={{ animationDelay: '0.2s' }} />
+                          <span className="w-1 bg-rose-600 rounded-full animate-wave-bar" style={{ animationDelay: '0.4s' }} />
+                        </div>
                       )}
-                    </button>
+
+                      <button
+                        type="button"
+                        onClick={toggleListening}
+                        className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all border ${
+                          isListening
+                            ? "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
+                            : "bg-teal-50 border-teal-200 text-teal-800 hover:bg-teal-100"
+                        }`}
+                      >
+                        {isListening ? (
+                          <>
+                            <span className="h-2 w-2 bg-rose-500 rounded-full animate-ping" />
+                            <span>Stop Recording</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-3.5 h-3.5" />
+                            <span>Start Ambient Voice Dictation</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Preset Dictation Chips */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="text-[11px] font-semibold text-slate-400">Presets:</span>
+                    {[
+                      "Patient presents with high grade fever (102°F), dry cough, and acute fatigue for 3 days.",
+                      "Severe retrosternal chest pain radiating to left arm with diaphoresis.",
+                      "Abdominal pain in right lower quadrant with rebound tenderness and nausea.",
+                    ].map((preset, pIdx) => (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => setChiefComplaint(preset)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-800 text-slate-600 rounded-lg text-[11px] font-medium transition-colors border border-slate-200"
+                      >
+                        + {preset.substring(0, 32)}...
+                      </button>
+                    ))}
                   </div>
 
                   <textarea
@@ -371,13 +446,34 @@ export default function OPDPage() {
 
             {/* Past Sessions Grid */}
             {!isCreating && !selectedSession && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {sessions.length === 0 ? (
-                  <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
-                    No OPD encounter history found. Click "New OPD Dictation" to begin.
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <History className="w-4 h-4 text-teal-600" />
+                    <span>Past Encounters ({sessions.length})</span>
                   </div>
-                ) : (
-                  sessions.map((session) => (
+
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Filter OPD history by symptoms..."
+                      className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 focus:bg-white outline-none transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {sessions.filter((s) => s.input?.chiefComplaint?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
+                    <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                      No OPD encounter history found. Click "New OPD Dictation" to begin.
+                    </div>
+                  ) : (
+                    sessions
+                      .filter((s) => s.input?.chiefComplaint?.toLowerCase().includes(searchTerm.toLowerCase()))
+                      .map((session) => (
                     <div
                       key={session._id}
                       onClick={() => setSelectedSession(session)}
@@ -414,6 +510,7 @@ export default function OPDPage() {
                   ))
                 )}
               </div>
+            </div>
             )}
           </>
         )}

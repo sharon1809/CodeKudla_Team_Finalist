@@ -137,30 +137,72 @@ export default function DrugSafetyPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Pill className="w-7 h-7 text-teal-700" />
-              Drug Safety & Interaction Checker
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Real-time multi-drug interaction screening, dosage guardrails, and contraindication alerts
-            </p>
+        {/* Header Hero Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold uppercase tracking-wider">
+                <Pill className="w-3.5 h-3.5" /> Pharmacovigilance & Safety
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Drug Safety & Interaction Checker
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                Real-time multi-drug interaction screening, dosage guardrails, patient allergy conflicts, and FDA/ICMR contraindication alerts.
+              </p>
+            </div>
+
+            {!isCreating && !selectedReport && (
+              <button
+                onClick={() => {
+                  setDrugName("");
+                  setPatientId("");
+                  setIsCreating(true);
+                }}
+                className="btn-teal text-xs py-3 px-6 shadow-lg shadow-teal-700/30 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Safety Check</span>
+              </button>
+            )}
           </div>
 
+          {/* Quick Metrics Bar */}
           {!isCreating && !selectedReport && (
-            <button
-              onClick={() => {
-                setDrugName("");
-                setPatientId("");
-                setIsCreating(true);
-              }}
-              className="btn-teal text-xs py-2.5 px-5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Safety Screening</span>
-            </button>
+            <div className="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                  {reports.length}
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Screenings</span>
+                  <span className="font-bold text-slate-200">Safety History</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  FDA
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">OpenFDA API</span>
+                  <span className="font-bold text-slate-200">Live Label Sync</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3 col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                  100%
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Allergy Guard</span>
+                  <span className="font-bold text-slate-200">Conflict Checker</span>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
@@ -28,6 +29,7 @@ export default function XrayPage() {
   const [patients, setPatients] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedStudy, setSelectedStudy] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [uploadLoading, setUploadLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -173,26 +175,68 @@ export default function XrayPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <FileImage className="w-7 h-7 text-teal-700" />
-              X-Ray Radiology Diagnostic Portal
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Automated multi-class lesion detection and radiologist decision support
-            </p>
+        {/* Header Hero Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold uppercase tracking-wider">
+                <FileImage className="w-3.5 h-3.5" /> AI Radiology Diagnostic Suite
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                X-Ray Radiology Diagnostic Portal
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                Automated multi-class lesion detection, DICOM digital radiogram analysis, and radiologist decision support.
+              </p>
+            </div>
+
+            {!isCreating && !selectedStudy && (
+              <button
+                onClick={() => setIsCreating(true)}
+                className="btn-teal text-xs py-3 px-6 shadow-lg shadow-teal-700/30 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Upload New X-Ray</span>
+              </button>
+            )}
           </div>
 
+          {/* Quick Metrics Bar */}
           {!isCreating && !selectedStudy && (
-            <button
-              onClick={() => setIsCreating(true)}
-              className="btn-teal text-xs py-2.5 px-5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Upload New X-Ray</span>
-            </button>
+            <div className="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                  {studies.length}
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Scans</span>
+                  <span className="font-bold text-slate-200">Radiology Vault</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  2.5
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Vision Model</span>
+                  <span className="font-bold text-slate-200">Gemini Vision AI</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3 col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                  RAG
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Grounded Analysis</span>
+                  <span className="font-bold text-slate-200">Textbook Verified</span>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -407,13 +451,42 @@ export default function XrayPage() {
 
             {/* Studies Grid */}
             {!isCreating && !selectedStudy && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {studies.length === 0 ? (
-                  <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
-                    No X-ray studies logged. Click "Upload New X-Ray" to upload a scan.
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <FileImage className="w-4 h-4 text-teal-600" />
+                    <span>Radiology Records ({studies.length})</span>
                   </div>
-                ) : (
-                  studies.map((study) => (
+
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Filter by patient name or study type..."
+                      className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 focus:bg-white outline-none transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {studies.filter(
+                    (s) =>
+                      s.patientId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      s.studyType?.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                      No X-ray studies logged. Click "Upload New X-Ray" to upload a scan.
+                    </div>
+                  ) : (
+                    studies
+                      .filter(
+                        (s) =>
+                          s.patientId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          s.studyType?.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((study) => (
                     <div
                       key={study._id}
                       onClick={() => handleSelectStudy(study._id)}
@@ -452,6 +525,7 @@ export default function XrayPage() {
                   ))
                 )}
               </div>
+            </div>
             )}
           </>
         )}

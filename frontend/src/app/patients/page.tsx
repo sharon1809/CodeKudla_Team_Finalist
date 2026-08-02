@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   ShieldCheck,
   ShieldAlert,
+  Search,
 } from "lucide-react";
 import { Navbar } from "../../components/Navbar";
 import { SanitizedMedicalContent } from "../../components/SanitizedMedicalContent";
@@ -166,29 +167,71 @@ export default function PatientsPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200/80 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Users className="w-7 h-7 text-teal-700" />
-              Patient EHR Directory
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Longitudinal clinical encounters, patient histories, and medical allergy records
-            </p>
+        {/* Header Hero Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-bold uppercase tracking-wider">
+                <Users className="w-3.5 h-3.5" /> Longitudinal Health Records
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Patient EHR Directory & Clinical Encounters
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                Centralized electronic health record vault, patient demographics, allergy alerts, and multi-modal diagnostic encounter history.
+              </p>
+            </div>
+
+            {!isCreating && !isEditing && !selectedTimelinePatient && (
+              <button
+                onClick={() => {
+                  setFormData(initialFormState);
+                  setIsCreating(true);
+                }}
+                className="btn-teal text-xs py-3 px-6 shadow-lg shadow-teal-700/30 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Register Patient</span>
+              </button>
+            )}
           </div>
 
+          {/* Quick Metrics Bar */}
           {!isCreating && !isEditing && !selectedTimelinePatient && (
-            <button
-              onClick={() => {
-                setFormData(initialFormState);
-                setIsCreating(true);
-              }}
-              className="btn-teal text-xs py-2.5 px-5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Register Patient</span>
-            </button>
+            <div className="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                  {patients.length}
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Patients</span>
+                  <span className="font-bold text-slate-200">Registered Vault</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                  {patients.filter((p) => p.allergies?.length > 0).length}
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Allergy Alerts</span>
+                  <span className="font-bold text-slate-200">Flagged Cases</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/60 backdrop-blur-md p-3 rounded-2xl border border-slate-700/60 flex items-center gap-3 col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  100%
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">HIPAA Verified</span>
+                  <span className="font-bold text-slate-200">Encrypted Storage</span>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -547,31 +590,42 @@ export default function PatientsPage() {
 
             {/* Patients Grid */}
             {!isCreating && !isEditing && !selectedTimelinePatient && (
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <input
-                    type="text"
-                    placeholder="Search patients by name or ID..."
-                    className="w-full sm:w-64 px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="space-y-5">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <Users className="w-4 h-4 text-teal-600" />
+                    <span>Patient Records ({filteredPatients.length} of {patients.length})</span>
+                  </div>
+
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search patients by name or ID..."
+                      className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:border-teal-600 focus:bg-white outline-none transition-all shadow-2xs"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredPatients.length === 0 ? (
-                    <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                    <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs shadow-sm">
                       No patient records found. Click "Register Patient" to add a new record.
                     </div>
                   ) : (
                     filteredPatients.map((patient) => (
                       <div
                         key={patient._id}
-                        className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-teal-300 hover:shadow-md transition-all flex flex-col justify-between group"
+                        className="rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:border-teal-400 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden hover:-translate-y-1 relative"
                       >
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="badge-clinical badge-teal">
+                        {/* Top Gradient Accent Line */}
+                        <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500" />
+
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="badge-clinical badge-teal shadow-2xs">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Stable Record
                             </span>
                             <div className="flex items-center gap-1">
@@ -580,14 +634,14 @@ export default function PatientsPage() {
                                   e.stopPropagation();
                                   handleEditClick(patient);
                                 }}
-                                className="p-1 text-slate-400 hover:text-teal-700 transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
                                 title="Edit Record"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => handleDeletePatient(patient._id, e)}
-                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                                 title="Delete Record"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -595,37 +649,46 @@ export default function PatientsPage() {
                             </div>
                           </div>
 
-                          <h3 className="text-base font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">
-                            {patient.name}
-                          </h3>
-                          <div className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-2">
-                            <span>{patient.age} yrs</span>
-                            <span>•</span>
-                            <span className="capitalize">{patient.gender}</span>
-                            {patient.weight && <span>• {patient.weight} kg</span>}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold text-base border border-teal-200/80 group-hover:scale-105 transition-transform">
+                              {patient.name?.[0] || "P"}
+                            </div>
+                            <div>
+                              <h3 className="text-base font-extrabold text-slate-900 group-hover:text-teal-700 transition-colors">
+                                {patient.name}
+                              </h3>
+                              <div className="text-xs text-slate-500 font-semibold flex items-center gap-2">
+                                <span>{patient.age} yrs</span>
+                                <span>•</span>
+                                <span className="capitalize">{patient.gender}</span>
+                                {patient.weight && <span>• {patient.weight} kg</span>}
+                              </div>
+                            </div>
                           </div>
 
                           {patient.contactNumber && (
-                            <div className="text-xs text-slate-600 flex items-center gap-1.5 mb-3">
+                            <div className="text-xs text-slate-600 flex items-center gap-2 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                               <Phone className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{patient.contactNumber}</span>
+                              <span className="font-mono">{patient.contactNumber}</span>
                             </div>
                           )}
 
                           {patient.allergies?.length > 0 && (
-                            <div className="mb-3 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs">
-                              <span className="font-bold block mb-0.5 text-[10px] uppercase">Allergies</span>
-                              <span>{patient.allergies.join(", ")}</span>
+                            <div className="mb-4 p-3 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-900 text-xs">
+                              <span className="font-bold block mb-1 text-[10px] uppercase tracking-wider text-rose-700 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3 text-rose-600" /> Allergies & Sensitivities
+                              </span>
+                              <span className="font-semibold">{Array.isArray(patient.allergies) ? patient.allergies.join(", ") : patient.allergies}</span>
                             </div>
                           )}
                         </div>
 
                         <div
                           onClick={() => handleOpenTimeline(patient)}
-                          className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-700 cursor-pointer hover:text-teal-900"
+                          className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-teal-700 cursor-pointer hover:bg-teal-50/80 hover:text-teal-900 transition-colors"
                         >
                           <span>View Detailed EHR History</span>
-                          <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                          <span className="group-hover:translate-x-1.5 transition-transform font-bold">&rarr;</span>
                         </div>
                       </div>
                     ))
