@@ -1,10 +1,7 @@
 import axios from 'axios';
+import { getOpenRouterApiKeys, executeWithFallback } from './apiKeyManager';
 
 class AIService {
-  get apiKey() {
-    return process.env.OPENROUTER_API_KEY;
-  }
-
   get model() {
     return process.env.OPENROUTER_MODEL || 'google/gemma-4-26b-a4b-it:free';
   }
@@ -14,40 +11,43 @@ class AIService {
   }
 
   async callLLM(systemPrompt: string, userPrompt: string, maxTokens = 1200) {
-    if (!this.apiKey || this.apiKey === 'your_openrouter_api_key_here') {
+    const keys = getOpenRouterApiKeys();
+    if (keys.length === 0) {
       console.error('AI service: OPENROUTER_API_KEY not configured');
       return null;
     }
 
     try {
-      const response = await axios.post(
-        this.baseURL,
-        {
-          model: this.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: maxTokens,
-          temperature: 0.3
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'HTTP-Referer': 'http://localhost:3000',
-            'X-Title': 'Drug Safety Checker'
+      return await executeWithFallback('openrouter', async (apiKey) => {
+        const response = await axios.post(
+          this.baseURL,
+          {
+            model: this.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            max_tokens: maxTokens,
+            temperature: 0.3
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': 'http://localhost:3000',
+              'X-Title': 'Drug Safety Checker'
+            }
           }
-        }
-      );
+        );
 
-      if (response.data && response.data.choices && response.data.choices[0]) {
-        return response.data.choices[0].message.content;
-      }
-      console.error('AI service: unexpected response shape', JSON.stringify(response.data).slice(0, 500));
+        if (response.data && response.data.choices && response.data.choices[0]) {
+          return response.data.choices[0].message.content;
+        }
+        throw new Error('Unexpected response shape from OpenRouter AI Service');
+      });
     } catch (error: any) {
-      console.error('AI service error:', error.response?.data?.error?.message || error.message);
+      console.error('AI service error:', error.message);
+      return null;
     }
-    return null;
   }
 
   async generateSafetyReport(patient: any, drug: any, safetyCheck: any) {
